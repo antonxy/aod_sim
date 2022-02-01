@@ -134,8 +134,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.camera.default_configuration()
         self.camera.configuration = {
             'roi': (1, 1, 1008, 1008),
-            #'trigger': 'external exposure start & software trigger',
-            'trigger': 'auto sequence',
+            'trigger': 'external exposure start & software trigger',
+            #'trigger': 'auto sequence',
             'acquire': 'auto',
         }
         self.configure_camera(1e-3)
@@ -171,7 +171,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.camera.record(number_of_images=7, mode='sequence non blocking')
 
-        #nidaq_pattern.project_patterns(pattern_deg, pattern_rate_Hz)
+        nidaq_pattern.project_patterns(pattern_deg, pattern_rate_Hz)
         while True:
             running = self.camera.rec.get_status()['is running']
             if not running:
