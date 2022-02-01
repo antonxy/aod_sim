@@ -8,6 +8,7 @@ in rec {
             pkgs.python3
             pypkgs.nidaqmx
             pypkgs.numpy
+            pypkgs.matplotlib
         ];
     };
 }
