@@ -24,28 +24,42 @@ def frequency_MHz_to_bin(x, y):
 
     return (((1 << 15 | x_int) << 16) | (1 << 15 | y_int)).astype(np.uint32)
 
-def main():
-    l = np.linspace(0, 2*np.pi, 500)
-    scan_angle_x = angle_deg_to_frequency_MHz(np.sin(l) * 0.5)
-    scan_angle_y = angle_deg_to_frequency_MHz(np.cos(l) * 0.5)
+def project_patterns(patterns_degree, rate):
+    # patterns_degree dimensions: [pattern, sample in pattern, axis (x,y)]
+    if len(patterns_degree.shape) == 2:
+        patterns_degree = patterns_degree[np.newaxis, :, :]
+    assert(len(patterns_degree.shape) == 3)
+    assert(patterns_degree.shape[2] == 2)
+
+    num_patterns = patterns_degree.shape[0]
+    num_samples = patterns_degree.shape[1]
+
+    scan_angle_x = angle_deg_to_frequency_MHz(patterns_degree[:, :, 0])
+    scan_angle_y = angle_deg_to_frequency_MHz(patterns_degree[:, :, 1])
     scan = frequency_MHz_to_bin(scan_angle_x, scan_angle_y)
-    num_positions = scan.shape[0]
+
+    print(f"Projecting {num_patterns} patterns with {num_samples} samples each")
 
     sys = nidaqmx.system.System.local()
     dev = sys.devices['Dev1']
-    while True:
+    for pattern_nr in range(num_patterns):
         try:
-            print("-")
             with nidaqmx.Task() as task:
                 task.do_channels.add_do_chan('Dev1/port0:Dev1/port3', line_grouping=nidaqmx.constants.LineGrouping.CHAN_FOR_ALL_LINES)
-                task.timing.cfg_samp_clk_timing(rate=20000.0, sample_mode=nidaqmx.constants.AcquisitionType.FINITE, samps_per_chan=num_positions)
+                task.timing.cfg_samp_clk_timing(rate=rate, sample_mode=nidaqmx.constants.AcquisitionType.FINITE, samps_per_chan=num_samples)
                 task.export_signals.export_signal(nidaqmx.constants.Signal.START_TRIGGER, '/Dev1/PFI4')
-                task.write(scan, auto_start=True)
+                task.write(scan[pattern_nr], auto_start=True)
                 task.wait_until_done()
         except KeyboardInterrupt:
             break
 
     dev.reset_device()
+
+
+def main():
+    l = np.linspace(0, 2*np.pi, 500)
+    pattern = np.stack([np.sin(l) * 0.5, np.cos(l) * 0.5], axis=1)
+    project_patterns(pattern, rate=20000.0)
 
 
 if __name__ == "__main__":
