@@ -12,7 +12,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('filename')
     parser.add_argument('--num_x', type=int, default=20)
-    parser.add_argument('--num_y', type=int, default=20)
+    parser.add_argument('--num_y', type=int, default=10)
     parser.add_argument('--orientation_deg', type=float, default=0.0)
     parser.add_argument('--dist_deg', type=float, nargs='+', required=True, help="Reasonable value ~ 0.038")
     parser.add_argument('--show', action='store_true')

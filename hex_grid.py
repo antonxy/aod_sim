@@ -36,11 +36,10 @@ def hex_grid_positions(x_dist, tiles_x, tiles_y):
     return P
 
 
-def projection_hex_pattern_deg(step_size_um, steps_x, steps_y, orientation_rad=0.0, aspect_ratio=1.0):
-    um_to_deg = 0.7/1095
+def projection_hex_pattern_deg(step_size_deg, steps_x, steps_y, orientation_rad=0.0, aspect_ratio=1.0):
     y_tweak = aspect_ratio
 
-    positions = hex_grid_positions(step_size_um * um_to_deg, steps_x, steps_y)
+    positions = hex_grid_positions(step_size_deg, steps_x, steps_y)
 
     # Center positions around 0
     positions = positions - np.mean(positions, axis=0)
@@ -59,7 +58,7 @@ def projection_hex_pattern_deg(step_size_um, steps_x, steps_y, orientation_rad=0
 
 
     # Shift by 1/7 period
-    shift_pos = hex_grid_positions(step_size_um * um_to_deg, 1, 2)
+    shift_pos = hex_grid_positions(step_size_deg, 1, 2)
     shift_pos = shift_pos[3, :]
 
     shifts = shift_pos[np.newaxis, :] * (np.arange(7) / 7)[:, np.newaxis]
