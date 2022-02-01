@@ -11,6 +11,7 @@ in rec {
             pypkgs.matplotlib
             pypkgs.tifffile
             pypkgs.ipython
+            pypkgs.scipy
         ];
     };
 }
