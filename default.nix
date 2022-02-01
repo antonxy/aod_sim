@@ -9,6 +9,8 @@ in rec {
             pypkgs.nidaqmx
             pypkgs.numpy
             pypkgs.matplotlib
+            pypkgs.tifffile
+            pypkgs.ipython
         ];
     };
 }
