@@ -23,6 +23,10 @@ class MplCanvas(FigureCanvasQTAgg):
         self.axes = self.fig.add_subplot(111)
         super(MplCanvas, self).__init__(self.fig)
 
+    def clear(self):
+        self.fig.clear()
+        self.axes = self.fig.add_subplot(111)
+
 
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -156,7 +160,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.exposure_lbl.setText(f"{exposure_time_sec * 1e3:.1f} ms")
 
-        self.pattern_plot.axes.clear()
+        self.pattern_plot.clear()
         self.pattern_plot.axes.set_title("Projected pattern")
         self.pattern_plot.axes.set_aspect(1)
         for i in range(7):
@@ -177,14 +181,13 @@ class MainWindow(QtWidgets.QMainWindow):
         images, metadatas = self.camera.images()
         self.frames = np.stack(images)
 
-        self.image_plot.axes.clear()
+        self.image_plot.clear()
         self.image_plot.axes.set_title("Recorded image")
         im = self.image_plot.axes.imshow(self.frames[0])
         self.image_plot.fig.colorbar(im)
         self.image_plot.draw()
 
     def reconstruct_image(self):
-
         N = int(self.reconstruction_size_txt.text())
         offset_x = int(self.reconstruction_offset_x.text())
         offset_y = int(self.reconstruction_offset_y.text())
