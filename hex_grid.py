@@ -35,7 +35,8 @@ def hex_grid_positions(x_dist, tiles_x, tiles_y):
             i = i + 2
     return P
 
-def projection_hex_pattern(step_size_um, steps_x, steps_y, orientation_rad=0.0, aspect_ratio=1.0):
+
+def projection_hex_pattern_deg(step_size_um, steps_x, steps_y, orientation_rad=0.0, aspect_ratio=1.0):
     um_to_deg = 0.7/1095
     y_tweak = aspect_ratio
 
@@ -71,10 +72,11 @@ def projection_hex_pattern(step_size_um, steps_x, steps_y, orientation_rad=0.0, 
 
     return positions_shifted
 
+
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    P = projection_hex_pattern(0.1, 10, 5, orientation_rad = 0.1)
+    P = projection_hex_pattern_deg(0.1, 10, 5, orientation_rad = 0.1)
     f = plt.figure()
     ax = f.add_subplot(1, 1, 1)
     ax.set_aspect(1.0)

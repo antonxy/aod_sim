@@ -15,6 +15,7 @@ def angle_deg_to_frequency_MHz(angle_deg):
     assert((freq_MHz >= F_min).all())
     return freq_MHz
 
+
 def frequency_MHz_to_bin(x, y):
     x_int = np.round(x / 500 * (2 ** 15 - 1)).astype(np.uint32)
     y_int = np.round(y / 500 * (2 ** 15 - 1)).astype(np.uint32)
@@ -24,7 +25,8 @@ def frequency_MHz_to_bin(x, y):
 
     return (((1 << 15 | x_int) << 16) | (1 << 15 | y_int)).astype(np.uint32)
 
-def project_patterns(patterns_degree, rate):
+
+def project_patterns(patterns_degree, rate, reset_when_done = True):
     # patterns_degree dimensions: [pattern, sample in pattern, axis (x,y)]
     if len(patterns_degree.shape) == 2:
         patterns_degree = patterns_degree[np.newaxis, :, :]
@@ -53,6 +55,13 @@ def project_patterns(patterns_degree, rate):
         except KeyboardInterrupt:
             break
 
+    if reset_when_done:
+        dev.reset_device()
+
+
+def reset_daq():
+    sys = nidaqmx.system.System.local()
+    dev = sys.devices['Dev1']
     dev.reset_device()
 
 
