@@ -8,6 +8,7 @@ import scipy
 
 import matplotlib
 matplotlib.use('Qt5Agg')
+matplotlib.rcParams["figure.autolayout"] = True  # tight layout
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
@@ -50,10 +51,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.reconstruction_size_txt = QtWidgets.QLineEdit("128")
         layout.addRow("Reconstruction size N", self.reconstruction_size_txt)
 
-        self.reconstruction_offset_x = QtWidgets.QLineEdit("0")
+        self.reconstruction_offset_x = QtWidgets.QLineEdit("440")
         layout.addRow("Reconstruction offset x", self.reconstruction_offset_x)
 
-        self.reconstruction_offset_y = QtWidgets.QLineEdit("0")
+        self.reconstruction_offset_y = QtWidgets.QLineEdit("440")
         layout.addRow("Reconstruction offset y", self.reconstruction_offset_y)
 
         toolbar = QtWidgets.QToolBar("Toolbar")
@@ -99,6 +100,15 @@ class MainWindow(QtWidgets.QMainWindow):
         w = QtWidgets.QWidget()
         w.setLayout(lay)
         self.tab_widget.addTab(w, "Recorded image")
+
+        lay = QtWidgets.QVBoxLayout()
+        self.carrier_plot = MplCanvas(self, width=5, height=4, dpi=100)
+        toolbar = NavigationToolbar(self.carrier_plot, self)
+        lay.addWidget(toolbar)
+        lay.addWidget(self.carrier_plot)
+        w = QtWidgets.QWidget()
+        w.setLayout(lay)
+        self.tab_widget.addTab(w, "Carrier")
 
         lay = QtWidgets.QVBoxLayout()
         self.recon_plot = MplCanvas(self, width=5, height=4, dpi=100)
@@ -187,6 +197,15 @@ class MainWindow(QtWidgets.QMainWindow):
         p.debug = False
         p.use_filter = False
         p.calibrate(frames)
+
+        self.carrier_plot.fig.clear()
+        axs = self.carrier_plot.fig.subplots(2, 3)
+        for i in range(3):
+            axs[0, i].imshow(p.carrier_debug_img[i])
+        for i in range(3):
+            axs[1, i].imshow(p.carrier_debug_zoom_img[i])
+        self.carrier_plot.draw()
+
         reconstruct = p.reconstruct_fftw(frames)
 
         self.recon_plot.fig.clear()

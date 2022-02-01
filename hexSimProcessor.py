@@ -31,6 +31,8 @@ class HexSimProcessor:
 
     def __init__(self):
         self._lastN = 0
+        self.carrier_debug_img = [None] * 3
+        self.carrier_debug_zoom_img = [None] * 3
 
     def _allocate_arrays(self):
         ''' define grids '''
@@ -84,8 +86,8 @@ class HexSimProcessor:
         ampl = np.zeros((3, 1), dtype=np.single)
 
         for i in range(0, 3):
-            ckx[i], cky[i], p[i], ampl[i] = self._findCarrier(sum_prepared_comp[0, :, :],
-                                                              sum_prepared_comp[i + 1, :, :], mask1)
+            ckx[i], cky[i], p[i], ampl[i], self.carrier_debug_img[i], self.carrier_debug_zoom_img[i] =\
+                self._findCarrier(sum_prepared_comp[0, :, :], sum_prepared_comp[i + 1, :, :], mask1)
         if self.debug:
             print(f'kx = {ckx[0]}, {ckx[1]}, {ckx[2]}')
             print(f'ky = {cky[0]}, {cky[1]}, {cky[2]}')
@@ -263,19 +265,21 @@ class HexSimProcessor:
         band = band0 * band1
         ixf = abs(fft.fftshift(fft.fft2(fft.fftshift(band))))
 
+        carrier_debug_img = (ixf - gaussian_filter(ixf, 20)) * mask
         if self.debug:
             plt.figure()
             plt.title('Find carrier')
-            plt.imshow((ixf - gaussian_filter(ixf, 20)) * mask)
+            plt.imshow(self.carrier_debug_img)
 
         pyc0, pxc0 = self._findPeak((ixf - gaussian_filter(ixf, 20)) * mask)
         ixfz, Kx, Ky = self._zoomf(band, self.N, self._kx[pyc0, pxc0], self._ky[pyc0, pxc0], 50, self._dk * self.N)
         pyc, pxc = self._findPeak(abs(ixfz))
 
+        carrier_debug_zoom_img = abs(ixfz)
         if self.debug:
             plt.figure()
             plt.title('Zoon Find carrier')
-            plt.imshow(abs(ixfz))
+            plt.imshow(carrier_debug_zoom_img)
 
         kx = Kx[pxc]
         ky = Ky[pyc]
@@ -306,7 +310,7 @@ class HexSimProcessor:
 
         ampl = np.abs(cross_corr_result) * 2
         phase = np.angle(cross_corr_result)
-        return kx, ky, phase, ampl
+        return kx, ky, phase, ampl, carrier_debug_img, carrier_debug_zoom_img
 
     def _findPeak(self, in_array):
         return np.unravel_index(np.argmax(in_array, axis=None), in_array.shape)
