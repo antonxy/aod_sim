@@ -6,7 +6,7 @@ import time
 
 import matplotlib
 matplotlib.use('Qt5Agg')
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
 try:
@@ -15,11 +15,10 @@ except ImportError:
     print("PCO lib not found")
 
 class MplCanvas(FigureCanvasQTAgg):
-
     def __init__(self, parent=None, width=5, height=4, dpi=100):
-        fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = fig.add_subplot(111)
-        super(MplCanvas, self).__init__(fig)
+        self.fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = self.fig.add_subplot(111)
+        super(MplCanvas, self).__init__(self.fig)
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -61,7 +60,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
         self.pattern_plot = MplCanvas(self, width=5, height=4, dpi=100)
+        toolbar = NavigationToolbar(self.pattern_plot, self)
+        layout.addWidget(toolbar)
         layout.addWidget(self.pattern_plot)
+
+        self.image_plot = MplCanvas(self, width=5, height=4, dpi=100)
+        toolbar = NavigationToolbar(self.image_plot, self)
+        layout.addWidget(toolbar)
+        layout.addWidget(self.image_plot)
 
         widget = QtWidgets.QWidget()
         widget.setLayout(layout)
@@ -102,6 +108,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.pattern_plot.axes.clear()
         self.pattern_plot.axes.set_title("Projected pattern")
+        self.pattern_plot.axes.set_aspect(1)
         for i in range(7):
             self.pattern_plot.axes.scatter(pattern_deg[i, :, 0], pattern_deg[i, :, 1])
         self.pattern_plot.draw()
@@ -119,6 +126,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         images, metadatas = self.camera.images()
         images = np.stack(images)
+
+        self.image_plot.axes.clear()
+        self.image_plot.axes.set_title("Recorded image")
+        im = self.image_plot.axes.imshow(images[0])
+        self.image_plot.fig.colorbar(im)
+        self.image_plot.draw()
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])
