@@ -3,6 +3,8 @@ import nidaq_pattern
 import hex_grid
 import numpy as np
 import time
+from hexSimProcessor import HexSimProcessor
+import scipy
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -45,6 +47,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.exposure_lbl = QtWidgets.QLabel()
         layout.addRow("Exposure time", self.exposure_lbl)
 
+        self.reconstruction_size_txt = QtWidgets.QLineEdit("128")
+        layout.addRow("Reconstruction size N", self.reconstruction_size_txt)
+
+        self.reconstruction_offset_x = QtWidgets.QLineEdit("0")
+        layout.addRow("Reconstruction offset x", self.reconstruction_offset_x)
+
+        self.reconstruction_offset_y = QtWidgets.QLineEdit("0")
+        layout.addRow("Reconstruction offset y", self.reconstruction_offset_y)
+
         toolbar = QtWidgets.QToolBar("Toolbar")
         self.addToolBar(toolbar)
 
@@ -58,16 +69,45 @@ class MainWindow(QtWidgets.QMainWindow):
         take_images_action.triggered.connect(self.take_images)
         toolbar.addAction(take_images_action)
 
+        reconstruct_images_action = QtWidgets.QAction("Reconstruct Images", self)
+        reconstruct_images_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_R))
+        reconstruct_images_action.triggered.connect(self.reconstruct_image)
+        toolbar.addAction(reconstruct_images_action)
 
+        close_action = QtWidgets.QAction("Quit", self)
+        close_action.setShortcut(QtGui.QKeySequence.Quit)
+        close_action.triggered.connect(self.close)
+        toolbar.addAction(close_action)
+
+        self.tab_widget = QtWidgets.QTabWidget(self)
+        layout.addWidget(self.tab_widget)
+
+        lay = QtWidgets.QVBoxLayout()
         self.pattern_plot = MplCanvas(self, width=5, height=4, dpi=100)
         toolbar = NavigationToolbar(self.pattern_plot, self)
-        layout.addWidget(toolbar)
-        layout.addWidget(self.pattern_plot)
+        lay.addWidget(toolbar)
+        lay.addWidget(self.pattern_plot)
+        w = QtWidgets.QWidget()
+        w.setLayout(lay)
+        self.tab_widget.addTab(w, "Pattern")
 
+        lay = QtWidgets.QVBoxLayout()
         self.image_plot = MplCanvas(self, width=5, height=4, dpi=100)
         toolbar = NavigationToolbar(self.image_plot, self)
-        layout.addWidget(toolbar)
-        layout.addWidget(self.image_plot)
+        lay.addWidget(toolbar)
+        lay.addWidget(self.image_plot)
+        w = QtWidgets.QWidget()
+        w.setLayout(lay)
+        self.tab_widget.addTab(w, "Recorded image")
+
+        lay = QtWidgets.QVBoxLayout()
+        self.recon_plot = MplCanvas(self, width=5, height=4, dpi=100)
+        toolbar = NavigationToolbar(self.recon_plot, self)
+        lay.addWidget(toolbar)
+        lay.addWidget(self.recon_plot)
+        w = QtWidgets.QWidget()
+        w.setLayout(lay)
+        self.tab_widget.addTab(w, "Reconstructed image")
 
         widget = QtWidgets.QWidget()
         widget.setLayout(layout)
@@ -125,13 +165,35 @@ class MainWindow(QtWidgets.QMainWindow):
             time.sleep(0.001)
 
         images, metadatas = self.camera.images()
-        images = np.stack(images)
+        self.frames = np.stack(images)
 
         self.image_plot.axes.clear()
         self.image_plot.axes.set_title("Recorded image")
-        im = self.image_plot.axes.imshow(images[0])
+        im = self.image_plot.axes.imshow(self.frames[0])
         self.image_plot.fig.colorbar(im)
         self.image_plot.draw()
+
+    def reconstruct_image(self):
+
+        N = int(self.reconstruction_size_txt.text())
+        offset_x = int(self.reconstruction_offset_x.text())
+        offset_y = int(self.reconstruction_offset_y.text())
+
+        assert self.frames.shape[0] == 7
+        frames = self.frames[:, offset_y:offset_y + N, offset_x:offset_x + N]
+
+        p = HexSimProcessor()
+        p.N = N
+        p.debug = False
+        p.use_filter = False
+        p.calibrate(frames)
+        reconstruct = p.reconstruct_fftw(frames)
+
+        self.recon_plot.fig.clear()
+        ax1, ax2 = self.recon_plot.fig.subplots(1, 2, sharex=True, sharey=True)
+        ax1.imshow(reconstruct)
+        ax2.imshow(scipy.ndimage.zoom(np.sum(frames, axis=0), (2, 2), order=1))
+        self.recon_plot.draw()
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])
