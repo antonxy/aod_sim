@@ -5,6 +5,8 @@ import time
 from hexSimProcessor import HexSimProcessor
 import scipy
 import threading
+import tifffile
+from pathlib import Path
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -125,14 +127,24 @@ class MainWindow(QtWidgets.QMainWindow):
         connect_camera_action.triggered.connect(self.connect_camera)
         cameraMenu.addAction(connect_camera_action)
 
-        disconnect_camera_action = QtWidgets.QAction("Disconnect Camera", self)
+        disconnect_camera_action = QtWidgets.QAction("&Disconnect Camera", self)
         disconnect_camera_action.triggered.connect(self.disconnect_camera)
         cameraMenu.addAction(disconnect_camera_action)
 
-        take_images_action = QtWidgets.QAction("Take Images", self)
+        take_images_action = QtWidgets.QAction("Take &Images", self)
         take_images_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_Return))
         take_images_action.triggered.connect(self.take_images)
         cameraMenu.addAction(take_images_action)
+
+        load_images_action = QtWidgets.QAction("&Open Images", self)
+        load_images_action.setShortcut(QtGui.QKeySequence.Open)
+        load_images_action.triggered.connect(self.load_images)
+        cameraMenu.addAction(load_images_action)
+
+        save_images_action = QtWidgets.QAction("&Save Images", self)
+        save_images_action.setShortcut(QtGui.QKeySequence.Save)
+        save_images_action.triggered.connect(self.save_images)
+        cameraMenu.addAction(save_images_action)
 
         reconstructMenu = self.menuBar().addMenu("&Reconstruct")
         reconstruct_images_action = QtWidgets.QAction("&Reconstruct Images", self)
@@ -145,11 +157,11 @@ class MainWindow(QtWidgets.QMainWindow):
         reconstruct_images_nocal_action.triggered.connect(self.reconstruct_image_nocal)
         reconstructMenu.addAction(reconstruct_images_nocal_action)
 
-        project_pattern_loop_action = QtWidgets.QAction("Project Pattern", self)
+        project_pattern_loop_action = QtWidgets.QAction("Project &Pattern", self)
         project_pattern_loop_action.triggered.connect(self.project_pattern_loop)
         cameraMenu.addAction(project_pattern_loop_action)
 
-        close_action = QtWidgets.QAction("Quit", self)
+        close_action = QtWidgets.QAction("&Quit", self)
         close_action.setShortcut(QtGui.QKeySequence.Quit)
         close_action.triggered.connect(self.close)
         cameraMenu.addAction(close_action)
@@ -219,9 +231,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def take_images(self):
         self.create_patterns()
-
         self.frames = self.sim_system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz)
+        self.plot_images()
 
+    def plot_images(self):
         self.image_plot.plot.fig.clear()
         axs = self.image_plot.plot.fig.subplots(3, 3, sharex=True, sharey=True)
         ims = []
@@ -238,10 +251,23 @@ class MainWindow(QtWidgets.QMainWindow):
         self.fft_plot.connect_clim(im)
         self.fft_plot.plot.draw()
 
-    def reconstruct_image(self):
-        #import tifffile
-        #self.frames = tifffile.imread("/home/anton/studium/eth/master_thesis/sim/hex_sim/5_with_python_softw/dist_60.tiff")
+    def load_images(self):
+        file_dialog = QtWidgets.QFileDialog()
+        filename = file_dialog.getOpenFileName(self, "Load tiff file", "", "TIFF (*.tiff);; TIF (*.tif)")[0]
+        if filename != "":
+            self.frames = tifffile.imread(filename)
+            self.plot_images()
 
+    def save_images(self):
+        file_dialog = QtWidgets.QFileDialog()
+        filename = file_dialog.getSaveFileName(self, "Save tiff file", "", "TIFF (*.tiff);; TIF (*.tif)")[0]
+        if filename != "":
+            path = Path(filename)
+            if path.suffix == "":
+                filename += ".tiff"
+            tifffile.imwrite(filename, self.frames)
+
+    def reconstruct_image(self):
         N = int(self.reconstruction_size_txt.text())
         offset_x = int(self.reconstruction_offset_x.text())
         offset_y = int(self.reconstruction_offset_y.text())
