@@ -1,5 +1,4 @@
 from PySide2 import QtCore, QtWidgets, QtGui
-import nidaq_pattern
 import hex_grid
 import numpy as np
 import time
@@ -12,10 +11,12 @@ matplotlib.rcParams["figure.autolayout"] = True  # tight layout
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
-try:
-    import pco
-except ImportError:
-    print("PCO lib not found")
+simulate = True
+if simulate:
+    from sim_simulated_system import SIMSimulatedSystem as SIMSystem
+else:
+    from sim_hardware_system import SIMHardwareSystem as SIMSystem
+
 
 class MplCanvas(FigureCanvasQTAgg):
     def __init__(self, parent=None, width=5, height=4, dpi=100):
@@ -55,10 +56,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.reconstruction_size_txt = QtWidgets.QLineEdit("128")
         layout.addRow("Reconstruction size N", self.reconstruction_size_txt)
 
-        self.reconstruction_offset_x = QtWidgets.QLineEdit("440")
+        self.reconstruction_offset_x = QtWidgets.QLineEdit("0")
         layout.addRow("Reconstruction offset x", self.reconstruction_offset_x)
 
-        self.reconstruction_offset_y = QtWidgets.QLineEdit("440")
+        self.reconstruction_offset_y = QtWidgets.QLineEdit("0")
         layout.addRow("Reconstruction offset y", self.reconstruction_offset_y)
 
         toolbar = QtWidgets.QToolBar("Toolbar")
@@ -127,26 +128,10 @@ class MainWindow(QtWidgets.QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
-        self.camera_exposure = -1;
+        self.sim_system = SIMSystem()
 
     def connect_camera(self):
-        self.camera = pco.Camera(debuglevel='error', interface="Camera Link Silicon Software")
-        self.camera.default_configuration()
-        self.camera.configuration = {
-            'roi': (1, 1, 1008, 1008),
-            'trigger': 'external exposure start & software trigger',
-            #'trigger': 'auto sequence',
-            'acquire': 'auto',
-        }
-        self.configure_camera(1e-3)
-
-    def configure_camera(self, exposure_time_sec):
-        if exposure_time_sec != self.camera_exposure:
-            self.camera.configuration = {
-                'exposure time': exposure_time_sec,
-            }
-            self.camera_exposure = exposure_time_sec
-
+        self.sim_system.connect()
 
     def take_images(self):
         dist_deg = float(self.distance_txt.text());
@@ -156,8 +141,8 @@ class MainWindow(QtWidgets.QMainWindow):
         pattern_rate_Hz = float(self.pattern_hz_txt.text());
 
         pattern_deg = hex_grid.projection_hex_pattern_deg(dist_deg, num_x, num_y, orientation_rad = np.deg2rad(orientation_deg))
-        exposure_time_sec = pattern_deg.shape[1] / pattern_rate_Hz
 
+        exposure_time_sec = pattern_deg.shape[1] / pattern_rate_Hz
         self.exposure_lbl.setText(f"{exposure_time_sec * 1e3:.1f} ms")
 
         self.pattern_plot.clear()
@@ -167,27 +152,27 @@ class MainWindow(QtWidgets.QMainWindow):
             self.pattern_plot.axes.scatter(pattern_deg[i, :, 0], pattern_deg[i, :, 1])
         self.pattern_plot.draw()
 
-        self.configure_camera(exposure_time_sec)
+        self.frames = self.sim_system.project_patterns_and_take_images(pattern_deg, pattern_rate_Hz)
 
-        self.camera.record(number_of_images=7, mode='sequence non blocking')
+        #self.image_plot.clear()
+        #self.image_plot.axes.set_title("Recorded image")
+        #im = self.image_plot.axes.imshow(self.frames[0])
+        #self.image_plot.fig.colorbar(im)
+        #self.image_plot.draw()
 
-        nidaq_pattern.project_patterns(pattern_deg, pattern_rate_Hz)
-        while True:
-            running = self.camera.rec.get_status()['is running']
-            if not running:
-                break
-            time.sleep(0.001)
-
-        images, metadatas = self.camera.images()
-        self.frames = np.stack(images)
-
-        self.image_plot.clear()
-        self.image_plot.axes.set_title("Recorded image")
-        im = self.image_plot.axes.imshow(self.frames[0])
-        self.image_plot.fig.colorbar(im)
+        self.image_plot.fig.clear()
+        axs = self.image_plot.fig.subplots(3, 3, sharex=True, sharey=True)
+        for i in range(3):
+            axs[0, i].imshow(self.frames[i])
+        for i in range(3):
+            axs[1, i].imshow(self.frames[i + 3])
+        axs[2, i].imshow(self.frames[6])
         self.image_plot.draw()
 
     def reconstruct_image(self):
+        #import tifffile
+        #self.frames = tifffile.imread("/home/anton/studium/eth/master_thesis/sim/hex_sim/5_with_python_softw/dist_60.tiff")
+
         N = int(self.reconstruction_size_txt.text())
         offset_x = int(self.reconstruction_offset_x.text())
         offset_y = int(self.reconstruction_offset_y.text())
