@@ -51,12 +51,6 @@ def projection_hex_pattern_deg(step_size_deg, steps_x, steps_y, orientation_rad=
 
     print(f"{num_steps} scan positions in hex grid")
 
-    # Apply orientation
-    c, s = np.cos(orientation_rad), np.sin(orientation_rad)
-    R = np.array(((c, -s), (s, c)))
-    positions = np.dot(positions, R.T)
-
-
     # Shift by 1/7 period
     shift_pos = hex_grid_positions(step_size_deg, 1, 2)
     shift_pos = shift_pos[3, :]
@@ -64,6 +58,11 @@ def projection_hex_pattern_deg(step_size_deg, steps_x, steps_y, orientation_rad=
     shifts = shift_pos[np.newaxis, :] * (np.arange(7) / 7)[:, np.newaxis]
 
     positions_shifted = positions[np.newaxis, :, :] + shifts[:, np.newaxis, :]
+
+    # Apply orientation
+    c, s = np.cos(orientation_rad), np.sin(orientation_rad)
+    R = np.array(((c, -s), (s, c)))
+    positions_shifted = np.dot(positions_shifted, R.T)
 
     num_steps = num_steps * 7;
 
