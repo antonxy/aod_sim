@@ -48,6 +48,10 @@ class SIMSimulatedSystem:
         self.sim_N = self.N * self.sim_oversample
         self.sim_xy = self.coords(self.sim_N)
 
+        self.simulate_grating = True
+        self.grating_repeats = 5
+        self.grating_distance_deg = 0.5
+
     def coords(self, N):
         # 1d array along x and y
         sim_x = np.linspace(-self.sample_width/2, self.sample_width/2, N)
@@ -73,6 +77,9 @@ class SIMSimulatedSystem:
 
     def sample(self):
         O = np.zeros((self.sim_N, self.sim_N))
+        O[:, :] = 1.0
+        return O
+
         for i in range(200):
             center = (random.random() * self.sim_N for i in range(2))
             rr, cc = skimage.draw.disk(center, 5 / self._dx * self.sim_oversample, shape=O.shape)
@@ -81,14 +88,29 @@ class SIMSimulatedSystem:
         O[rr, cc] += 1.0
         return O
 
+    def grating(self):
+        grating_dots = np.linspace(-self.grating_distance_deg * self.grating_repeats / 2, self.grating_distance_deg * self.grating_repeats / 2, self.grating_repeats)
+        dots_xx, dots_yy = np.meshgrid(grating_dots, grating_dots)
+        dots_xy = np.zeros((self.grating_repeats, self.grating_repeats, 2))
+        dots_xy[:, :, 0] = dots_xx
+        dots_xy[:, :, 1] = dots_yy
+        return dots_xy.reshape((-1, 2))
+
     def illumination(self, pattern_deg):
-        I = np.zeros((self.sim_N, self.sim_N))
+        if self.simulate_grating:
+            pattern_deg = pattern_deg[np.newaxis, :, :] + self.grating()[:, np.newaxis, :]
+            pattern_deg = pattern_deg.reshape((-1, 2))
+
         deg_to_um = 700.0
         center_um = np.array([self.sample_width / 2] * 2)
         pattern_um = (pattern_deg * deg_to_um) + center_um
+
         pattern_idx = np.round(pattern_um / self._dx * self.sim_oversample).astype(np.int32)
         pattern_idx[:,[0, 1]] = pattern_idx[:,[1, 0]] # swap x, y to row, col
+
+        I = np.zeros((self.sim_N, self.sim_N))
         I.ravel()[np.ravel_multi_index(pattern_idx.T, I.shape, mode='clip')] = 1.0
+
         return gaussian_filter(I, self.illumination_res/self._dx*self.sim_oversample/2)
 
     def project_patterns_and_take_images(self, patterns_deg, pattern_rate_Hz):
