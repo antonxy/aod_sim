@@ -48,6 +48,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.orientation_deg_txt = QtWidgets.QLineEdit("0")
         layout.addRow("Orientation [deg]", self.orientation_deg_txt)
 
+        self.aspect_txt = QtWidgets.QLineEdit("1.0")
+        layout.addRow("Aspect ratio", self.aspect_txt)
+
         self.pattern_hz_txt = QtWidgets.QLineEdit("40000")
         layout.addRow("Projection rate [Hz]", self.pattern_hz_txt)
 
@@ -158,18 +161,19 @@ class MainWindow(QtWidgets.QMainWindow):
         num_x = int(self.steps_x_txt.text());
         num_y = int(self.steps_y_txt.text());
         orientation_deg = float(self.orientation_deg_txt.text());
+        aspect = float(self.aspect_txt.text());
         self.pattern_rate_Hz = float(self.pattern_hz_txt.text());
 
-        pattern_deg = hex_grid.projection_hex_pattern_deg(dist_deg, num_x, num_y, orientation_rad = np.deg2rad(orientation_deg))
+        pattern_deg = hex_grid.projection_hex_pattern_deg(dist_deg, num_x, num_y, orientation_rad = np.deg2rad(orientation_deg), aspect_ratio=aspect)
 
         self.exposure_time_sec = pattern_deg.shape[1] / self.pattern_rate_Hz
         self.exposure_lbl.setText(f"{self.exposure_time_sec * 1e3:.1f} ms")
 
-        self.pattern_plot.clear()
-        self.pattern_plot.axes.set_title("Projected pattern")
-        self.pattern_plot.axes.set_aspect(1)
+        self.pattern_plot.fig.clear()
+        ax1, ax2 = self.pattern_plot.fig.subplots(1, 2, sharex=True, sharey=True)
         for i in range(7):
-            self.pattern_plot.axes.scatter(pattern_deg[i, :, 0], pattern_deg[i, :, 1])
+            ax1.scatter(pattern_deg[i, :, 0], pattern_deg[i, :, 1])
+        ax2.scatter(pattern_deg[0, :, 0], pattern_deg[0, :, 1])
         self.pattern_plot.draw()
 
         self.pattern_deg = pattern_deg
@@ -181,7 +185,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.frames = self.sim_system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz)
 
         #self.image_plot.clear()
-        #self.image_plot.axes.set_title("Recorded image")
         #im = self.image_plot.axes.imshow(self.frames[0])
         #self.image_plot.fig.colorbar(im)
         #self.image_plot.draw()
@@ -234,7 +237,6 @@ class MainWindow(QtWidgets.QMainWindow):
         ax1, ax2 = self.recon_plot.fig.subplots(1, 2, sharex=True, sharey=True)
         ax1.imshow(reconstruct)
         ax2.imshow(scipy.ndimage.zoom(np.sum(frames, axis=0), (2, 2), order=1))
-        self.recon_plot.draw()
         self.recon_plot.draw()
 
     def project_pattern_loop(self):
