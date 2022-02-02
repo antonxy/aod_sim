@@ -77,10 +77,10 @@ class SIMSimulatedSystem:
 
     def sample(self):
         O = np.zeros((self.sim_N, self.sim_N))
-        O[:, :] = 1.0
-        return O
+        #O[:, :] = 1.0
+        #return O
 
-        for i in range(200):
+        for i in range(10000):
             center = (random.random() * self.sim_N for i in range(2))
             rr, cc = skimage.draw.disk(center, 5 / self._dx * self.sim_oversample, shape=O.shape)
             O[rr, cc] += 1.0

@@ -92,10 +92,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle('Hex SIM GUI')
         layout = QtWidgets.QFormLayout()
 
-        self.distance_txt = QtWidgets.QLineEdit("0.038")
+        self.distance_txt = QtWidgets.QLineEdit("0.0345")
         layout.addRow("Distance [deg]", self.distance_txt)
 
-        self.steps_x_txt = QtWidgets.QLineEdit("20")
+        self.steps_x_txt = QtWidgets.QLineEdit("18")
         layout.addRow("Steps X", self.steps_x_txt)
 
         self.steps_y_txt = QtWidgets.QLineEdit("10")
@@ -104,7 +104,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.orientation_deg_txt = QtWidgets.QLineEdit("0")
         layout.addRow("Orientation [deg]", self.orientation_deg_txt)
 
-        self.aspect_txt = QtWidgets.QLineEdit("1.0")
+        self.aspect_txt = QtWidgets.QLineEdit("1.045")
         layout.addRow("Aspect ratio", self.aspect_txt)
 
         self.pattern_hz_txt = QtWidgets.QLineEdit("40000")
@@ -121,6 +121,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.reconstruction_offset_y = QtWidgets.QLineEdit("0")
         layout.addRow("Reconstruction offset y", self.reconstruction_offset_y)
+
+        self.reconstruction_eta_txt = QtWidgets.QLineEdit("0.5")
+        layout.addRow("Reconstruction eta", self.reconstruction_eta_txt)
 
         cameraMenu = self.menuBar().addMenu("&Camera")
         connect_camera_action = QtWidgets.QAction("&Connect Camera", self)
@@ -271,11 +274,13 @@ class MainWindow(QtWidgets.QMainWindow):
         N = int(self.reconstruction_size_txt.text())
         offset_x = int(self.reconstruction_offset_x.text())
         offset_y = int(self.reconstruction_offset_y.text())
+        eta = float(self.reconstruction_eta_txt.text())
 
         assert self.frames.shape[0] == 7
         frames = self.frames[:, offset_y:offset_y + N, offset_x:offset_x + N]
 
         self.p.N = N
+        self.p.eta = eta
         self.p.calibrate(frames)
 
         self.carrier_plot.plot.fig.clear()
