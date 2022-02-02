@@ -51,6 +51,7 @@ class SIMSimulatedSystem:
         self.simulate_grating = True
         self.grating_repeats = 5
         self.grating_distance_deg = 0.5
+        self.grating_angle_deg = 10.0
 
     def coords(self, N):
         # 1d array along x and y
@@ -94,7 +95,15 @@ class SIMSimulatedSystem:
         dots_xy = np.zeros((self.grating_repeats, self.grating_repeats, 2))
         dots_xy[:, :, 0] = dots_xx
         dots_xy[:, :, 1] = dots_yy
-        return dots_xy.reshape((-1, 2))
+        dots_xy = dots_xy.reshape((-1, 2))
+
+        # Apply orientation
+        orientation_rad = np.deg2rad(self.grating_angle_deg)
+        c, s = np.cos(orientation_rad), np.sin(orientation_rad)
+        R = np.array(((c, -s), (s, c)))
+        dots_xy = np.dot(dots_xy, R.T)
+
+        return dots_xy
 
     def illumination(self, pattern_deg):
         if self.simulate_grating:

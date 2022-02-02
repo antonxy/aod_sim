@@ -7,6 +7,7 @@ import scipy
 import threading
 import tifffile
 from pathlib import Path
+from detect_orientation_dialog import DetectOrientationDialog
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -134,20 +135,29 @@ class MainWindow(QtWidgets.QMainWindow):
         disconnect_camera_action.triggered.connect(self.disconnect_camera)
         cameraMenu.addAction(disconnect_camera_action)
 
+        imageMenu = self.menuBar().addMenu("&Image")
         take_images_action = QtWidgets.QAction("Take &Images", self)
         take_images_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_Return))
         take_images_action.triggered.connect(self.take_images)
-        cameraMenu.addAction(take_images_action)
+        imageMenu.addAction(take_images_action)
 
         load_images_action = QtWidgets.QAction("&Open Images", self)
         load_images_action.setShortcut(QtGui.QKeySequence.Open)
         load_images_action.triggered.connect(self.load_images)
-        cameraMenu.addAction(load_images_action)
+        imageMenu.addAction(load_images_action)
 
         save_images_action = QtWidgets.QAction("&Save Images", self)
         save_images_action.setShortcut(QtGui.QKeySequence.Save)
         save_images_action.triggered.connect(self.save_images)
-        cameraMenu.addAction(save_images_action)
+        imageMenu.addAction(save_images_action)
+
+        project_pattern_loop_action = QtWidgets.QAction("Project &Pattern", self)
+        project_pattern_loop_action.triggered.connect(self.project_pattern_loop)
+        imageMenu.addAction(project_pattern_loop_action)
+
+        measure_orientation_action = QtWidgets.QAction("&Measure Orientation", self)
+        measure_orientation_action.triggered.connect(self.measure_orientation)
+        imageMenu.addAction(measure_orientation_action)
 
         reconstructMenu = self.menuBar().addMenu("&Reconstruct")
         reconstruct_images_action = QtWidgets.QAction("&Reconstruct Images", self)
@@ -159,10 +169,6 @@ class MainWindow(QtWidgets.QMainWindow):
         reconstruct_images_nocal_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_F))
         reconstruct_images_nocal_action.triggered.connect(self.reconstruct_image_nocal)
         reconstructMenu.addAction(reconstruct_images_nocal_action)
-
-        project_pattern_loop_action = QtWidgets.QAction("Project &Pattern", self)
-        project_pattern_loop_action.triggered.connect(self.project_pattern_loop)
-        cameraMenu.addAction(project_pattern_loop_action)
 
         close_action = QtWidgets.QAction("&Quit", self)
         close_action.setShortcut(QtGui.QKeySequence.Quit)
@@ -237,6 +243,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.frames = self.sim_system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz)
         self.plot_images()
 
+    def measure_orientation(self):
+        orientation = DetectOrientationDialog.run_calibration_dialog(self.frames[0], self)
+        if orientation is not None:
+            self.orientation_deg_txt.setText(str(orientation))
+
     def plot_images(self):
         self.image_plot.plot.fig.clear()
         axs = self.image_plot.plot.fig.subplots(3, 3, sharex=True, sharey=True)
@@ -308,7 +319,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.recon_plot.plot.fig.clear()
         ax1, ax2 = self.recon_plot.plot.fig.subplots(1, 2, sharex=True, sharey=True)
-        im1 = ax1.imshow(reconstruct)
+        im1 = ax1.imshow(reconstruct / 4)
         im2 = ax2.imshow(scipy.ndimage.zoom(np.sum(frames, axis=0), (2, 2), order=1))
         self.recon_plot.connect_clim([im1, im2])
         self.recon_plot.plot.draw()
