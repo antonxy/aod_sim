@@ -8,7 +8,15 @@ import threading
 
 import matplotlib
 matplotlib.use('Qt5Agg')
-matplotlib.rcParams["figure.autolayout"] = True  # tight layout
+
+#matplotlib.rcParams["figure.autolayout"] = True  # tight layout, leads to plots moving around sometimes
+matplotlib.rcParams["figure.subplot.bottom"] = 0.04
+matplotlib.rcParams["figure.subplot.top"] = 1.0
+matplotlib.rcParams["figure.subplot.left"] = 0.04
+matplotlib.rcParams["figure.subplot.right"] = 1.0
+matplotlib.rcParams["figure.subplot.wspace"] = 0.1
+matplotlib.rcParams["figure.subplot.hspace"] = 0.1
+
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
@@ -28,6 +36,52 @@ class MplCanvas(FigureCanvasQTAgg):
     def clear(self):
         self.fig.clear()
         self.axes = self.fig.add_subplot(111)
+
+class PlotWidget(QtWidgets.QWidget):
+    def __init__(self, parent=None):
+        super(PlotWidget, self).__init__(parent)
+        lay = QtWidgets.QVBoxLayout()
+        self.plot = MplCanvas(self, width=5, height=100, dpi=100)
+
+        layh = QtWidgets.QHBoxLayout()
+        toolbar = NavigationToolbar(self.plot, self)
+        layh.addWidget(toolbar)
+
+        self.clim_min_txt = QtWidgets.QLineEdit("None")
+        self.clim_min_txt.returnPressed.connect(self.clim_changed)
+        self.clim_min_txt.setMaximumWidth(100)
+        self.clim_max_txt = QtWidgets.QLineEdit("None")
+        self.clim_max_txt.returnPressed.connect(self.clim_changed)
+        self.clim_max_txt.setMaximumWidth(100)
+
+        layh.addWidget(self.clim_min_txt)
+        layh.addWidget(self.clim_max_txt)
+
+        lay.addLayout(layh)
+        lay.addWidget(self.plot)
+        self.setLayout(lay)
+
+        self.clim_axes = None
+
+    def clim_changed(self):
+        cmin = None
+        if self.clim_min_txt.text() != "None":
+            cmin = float(self.clim_min_txt.text())
+        cmax = None
+        if self.clim_max_txt.text() != "None":
+            cmax = float(self.clim_max_txt.text())
+
+        if self.clim_axes is not None:
+            for ax in self.clim_axes:
+                ax.set(clim = (cmin, cmax))
+            self.plot.draw()
+
+    def connect_clim(self, axes):
+        if not hasattr(axes, "__iter__"):
+            axes = [axes]
+        self.clim_axes = axes
+        self.clim_changed()
+
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -66,40 +120,39 @@ class MainWindow(QtWidgets.QMainWindow):
         self.reconstruction_offset_y = QtWidgets.QLineEdit("0")
         layout.addRow("Reconstruction offset y", self.reconstruction_offset_y)
 
-        toolbar = QtWidgets.QToolBar("Toolbar")
-        self.addToolBar(toolbar)
-
-        connect_camera_action = QtWidgets.QAction("Connect Camera", self)
+        cameraMenu = self.menuBar().addMenu("&Camera")
+        connect_camera_action = QtWidgets.QAction("&Connect Camera", self)
         connect_camera_action.triggered.connect(self.connect_camera)
-        toolbar.addAction(connect_camera_action)
+        cameraMenu.addAction(connect_camera_action)
 
         disconnect_camera_action = QtWidgets.QAction("Disconnect Camera", self)
         disconnect_camera_action.triggered.connect(self.disconnect_camera)
-        toolbar.addAction(disconnect_camera_action)
+        cameraMenu.addAction(disconnect_camera_action)
 
         take_images_action = QtWidgets.QAction("Take Images", self)
         take_images_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_Return))
         take_images_action.triggered.connect(self.take_images)
-        toolbar.addAction(take_images_action)
+        cameraMenu.addAction(take_images_action)
 
-        reconstruct_images_action = QtWidgets.QAction("Reconstruct Images", self)
+        reconstructMenu = self.menuBar().addMenu("&Reconstruct")
+        reconstruct_images_action = QtWidgets.QAction("&Reconstruct Images", self)
         reconstruct_images_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_R))
         reconstruct_images_action.triggered.connect(self.reconstruct_image)
-        toolbar.addAction(reconstruct_images_action)
+        reconstructMenu.addAction(reconstruct_images_action)
 
-        reconstruct_images_nocal_action = QtWidgets.QAction("Reconstruct (No cal)", self)
+        reconstruct_images_nocal_action = QtWidgets.QAction("Reconstruct (&No cal)", self)
         reconstruct_images_nocal_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_F))
         reconstruct_images_nocal_action.triggered.connect(self.reconstruct_image_nocal)
-        toolbar.addAction(reconstruct_images_nocal_action)
+        reconstructMenu.addAction(reconstruct_images_nocal_action)
 
         project_pattern_loop_action = QtWidgets.QAction("Project Pattern", self)
         project_pattern_loop_action.triggered.connect(self.project_pattern_loop)
-        toolbar.addAction(project_pattern_loop_action)
+        cameraMenu.addAction(project_pattern_loop_action)
 
         close_action = QtWidgets.QAction("Quit", self)
         close_action.setShortcut(QtGui.QKeySequence.Quit)
         close_action.triggered.connect(self.close)
-        toolbar.addAction(close_action)
+        cameraMenu.addAction(close_action)
 
         self.tab_widget = QtWidgets.QTabWidget(self)
         layout.addWidget(self.tab_widget)
@@ -113,32 +166,17 @@ class MainWindow(QtWidgets.QMainWindow):
         w.setLayout(lay)
         self.tab_widget.addTab(w, "Pattern")
 
-        lay = QtWidgets.QVBoxLayout()
-        self.image_plot = MplCanvas(self, width=5, height=4, dpi=100)
-        toolbar = NavigationToolbar(self.image_plot, self)
-        lay.addWidget(toolbar)
-        lay.addWidget(self.image_plot)
-        w = QtWidgets.QWidget()
-        w.setLayout(lay)
-        self.tab_widget.addTab(w, "Recorded image")
+        self.image_plot = PlotWidget(self)
+        self.tab_widget.addTab(self.image_plot, "Recorded Images")
 
-        lay = QtWidgets.QVBoxLayout()
-        self.carrier_plot = MplCanvas(self, width=5, height=4, dpi=100)
-        toolbar = NavigationToolbar(self.carrier_plot, self)
-        lay.addWidget(toolbar)
-        lay.addWidget(self.carrier_plot)
-        w = QtWidgets.QWidget()
-        w.setLayout(lay)
-        self.tab_widget.addTab(w, "Carrier")
+        self.fft_plot = PlotWidget(self)
+        self.tab_widget.addTab(self.fft_plot, "FFT")
 
-        lay = QtWidgets.QVBoxLayout()
-        self.recon_plot = MplCanvas(self, width=5, height=4, dpi=100)
-        toolbar = NavigationToolbar(self.recon_plot, self)
-        lay.addWidget(toolbar)
-        lay.addWidget(self.recon_plot)
-        w = QtWidgets.QWidget()
-        w.setLayout(lay)
-        self.tab_widget.addTab(w, "Reconstructed image")
+        self.carrier_plot = PlotWidget(self)
+        self.tab_widget.addTab(self.carrier_plot, "Carrier")
+
+        self.recon_plot = PlotWidget(self)
+        self.tab_widget.addTab(self.recon_plot, "Reconstructed Image")
 
         widget = QtWidgets.QWidget()
         widget.setLayout(layout)
@@ -184,19 +222,21 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.frames = self.sim_system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz)
 
-        #self.image_plot.clear()
-        #im = self.image_plot.axes.imshow(self.frames[0])
-        #self.image_plot.fig.colorbar(im)
-        #self.image_plot.draw()
+        self.image_plot.plot.fig.clear()
+        axs = self.image_plot.plot.fig.subplots(3, 3, sharex=True, sharey=True)
+        ims = []
+        for i in range(3):
+            ims.append(axs[0, i].imshow(self.frames[i]))
+        for i in range(3):
+            ims.append(axs[1, i].imshow(self.frames[i + 3]))
+        ims.append(axs[2, i].imshow(self.frames[6]))
+        self.image_plot.connect_clim(ims)
+        self.image_plot.plot.draw()
 
-        self.image_plot.fig.clear()
-        axs = self.image_plot.fig.subplots(3, 3, sharex=True, sharey=True)
-        for i in range(3):
-            axs[0, i].imshow(self.frames[i])
-        for i in range(3):
-            axs[1, i].imshow(self.frames[i + 3])
-        axs[2, i].imshow(self.frames[6])
-        self.image_plot.draw()
+        self.fft_plot.plot.clear()
+        im = self.fft_plot.plot.axes.imshow(np.abs(np.fft.fftshift(np.fft.fft2(self.frames[0]))))
+        self.fft_plot.connect_clim(im)
+        self.fft_plot.plot.draw()
 
     def reconstruct_image(self):
         #import tifffile
@@ -212,13 +252,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.p.N = N
         self.p.calibrate(frames)
 
-        self.carrier_plot.fig.clear()
-        axs = self.carrier_plot.fig.subplots(2, 3)
+        self.carrier_plot.plot.fig.clear()
+        axs = self.carrier_plot.plot.fig.subplots(2, 3)
+        ims = []
         for i in range(3):
-            axs[0, i].imshow(self.p.carrier_debug_img[i])
+            ims.append(axs[0, i].imshow(self.p.carrier_debug_img[i]))
         for i in range(3):
-            axs[1, i].imshow(self.p.carrier_debug_zoom_img[i])
-        self.carrier_plot.draw()
+            ims.append(axs[1, i].imshow(self.p.carrier_debug_zoom_img[i]))
+        self.carrier_plot.connect_clim(ims)
+        self.carrier_plot.plot.draw()
 
         self.reconstruct_image_nocal()
 
@@ -233,11 +275,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         reconstruct = self.p.reconstruct_fftw(frames)
 
-        self.recon_plot.fig.clear()
-        ax1, ax2 = self.recon_plot.fig.subplots(1, 2, sharex=True, sharey=True)
-        ax1.imshow(reconstruct)
-        ax2.imshow(scipy.ndimage.zoom(np.sum(frames, axis=0), (2, 2), order=1))
-        self.recon_plot.draw()
+        self.recon_plot.plot.fig.clear()
+        ax1, ax2 = self.recon_plot.plot.fig.subplots(1, 2, sharex=True, sharey=True)
+        im1 = ax1.imshow(reconstruct)
+        im2 = ax2.imshow(scipy.ndimage.zoom(np.sum(frames, axis=0), (2, 2), order=1))
+        self.recon_plot.connect_clim([im1, im2])
+        self.recon_plot.plot.draw()
 
     def project_pattern_loop(self):
         self.create_patterns()
