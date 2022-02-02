@@ -7,7 +7,10 @@ from numpy import exp, pi, sqrt, log2, arccos
 from scipy.ndimage import gaussian_filter
 import numpy.fft as fft
 from numpy import newaxis
+import skimage
+import skimage.draw
 import time
+import random
 
 import matplotlib.pyplot as plt
 
@@ -25,7 +28,7 @@ def fft_downsample(img, block_size=2):
 
 class SIMSimulatedSystem:
     def __init__(self):
-        self.N = 128
+        self.N = 256
         # Optics parameters
         pixelsize = 11  # camera pixel size, um
         magnification = 1.5  # objective magnification
@@ -69,19 +72,18 @@ class SIMSimulatedSystem:
         pass
 
     def sample(self):
-        # Sample
         O = np.zeros((self.sim_N, self.sim_N))
-        # TODO this is slow, do something smarter
-        axy = self.coords(self.sim_N)
         for i in range(200):
-            xyshift = (np.random.rand(1, 2) - 0.5) * self.sample_width
-            xy_shifted = axy + xyshift
-            O = np.maximum(O, ((np.sum((xy_shifted)**2, axis=2) < 5**2)  * (np.random.rand(1) + 1)))
-        return np.maximum(O, (np.sum((axy)**2, axis=2) < 200**2)) * 20
+            center = (random.random() * self.sim_N for i in range(2))
+            rr, cc = skimage.draw.disk(center, 5 / self._dx * self.sim_oversample, shape=O.shape)
+            O[rr, cc] += 1.0
+        rr, cc = skimage.draw.disk((self.sim_N / 2, self.sim_N / 2), 200 / self._dx * self.sim_oversample, shape=O.shape)
+        O[rr, cc] += 1.0
+        return O
 
     def illumination(self, pattern_deg):
         I = np.zeros((self.sim_N, self.sim_N))
-        deg_to_um = 1000.0
+        deg_to_um = 700.0
         center_um = np.array([self.sample_width / 2] * 2)
         pattern_um = (pattern_deg * deg_to_um) + center_um
         pattern_idx = np.round(pattern_um / self._dx * self.sim_oversample).astype(np.int32)

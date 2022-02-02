@@ -13,6 +13,7 @@ in rec {
             pypkgs.ipython
             pypkgs.scipy
             pypkgs.pyside2
+            pypkgs.scikitimage
         ];
 
         #LD_LIBRARY_PATH = "${pypkgs.pyside.dev}/lib";

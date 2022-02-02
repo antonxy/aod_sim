@@ -57,7 +57,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.exposure_lbl = QtWidgets.QLabel()
         layout.addRow("Exposure time", self.exposure_lbl)
 
-        self.reconstruction_size_txt = QtWidgets.QLineEdit("128")
+        self.reconstruction_size_txt = QtWidgets.QLineEdit("256")
         layout.addRow("Reconstruction size N", self.reconstruction_size_txt)
 
         self.reconstruction_offset_x = QtWidgets.QLineEdit("0")
