@@ -1,5 +1,6 @@
 import nidaqmx
 import numpy as np
+import threading
 
 def angle_deg_to_frequency_MHz(angle_deg):
     angleRange = 2.29183  # 40 mrad  Maximum angle possible by AOD
@@ -26,7 +27,7 @@ def frequency_MHz_to_bin(x, y):
     return (((1 << 15 | x_int) << 16) | (1 << 15 | y_int)).astype(np.uint32)
 
 
-def project_patterns(patterns_degree, rate, reset_when_done = True, loop = False):
+def project_patterns(patterns_degree, rate, reset_when_done = True, loop = False, loop_event = None):
     # patterns_degree dimensions: [pattern, sample in pattern, axis (x,y)]
     if len(patterns_degree.shape) == 2:
         patterns_degree = patterns_degree[np.newaxis, :, :]
@@ -44,9 +45,15 @@ def project_patterns(patterns_degree, rate, reset_when_done = True, loop = False
 
     sys = nidaqmx.system.System.local()
     dev = sys.devices['Dev1']
+
+    # if no loop event set just loop forever
+    if loop_event is None:
+        loop_event = threading.Event()
+        loop_event.set()
+
     try:
-        first = True
-        while first or loop:
+        first = True  # Run at least once
+        while first or (loop and loop_event.is_set()):
             for pattern_nr in range(num_patterns):
                 with nidaqmx.Task() as task:
                     task.do_channels.add_do_chan('Dev1/port0:Dev1/port3', line_grouping=nidaqmx.constants.LineGrouping.CHAN_FOR_ALL_LINES)

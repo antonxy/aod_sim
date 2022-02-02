@@ -7,6 +7,7 @@ from numpy import exp, pi, sqrt, log2, arccos
 from scipy.ndimage import gaussian_filter
 import numpy.fft as fft
 from numpy import newaxis
+import time
 
 import matplotlib.pyplot as plt
 
@@ -40,7 +41,7 @@ class SIMSimulatedSystem:
 
         self.sample_width = self.N * self._dx
 
-        self.sim_oversample = 8
+        self.sim_oversample = 4
         self.sim_N = self.N * self.sim_oversample
         self.sim_xy = self.coords(self.sim_N)
 
@@ -59,6 +60,9 @@ class SIMSimulatedSystem:
         return sim_xy
 
     def connect(self):
+        self.O = self.sample()
+
+    def disconnect(self):
         pass
 
     def configure_camera(self, exposure_time_sec):
@@ -69,10 +73,10 @@ class SIMSimulatedSystem:
         O = np.zeros((self.sim_N, self.sim_N))
         # TODO this is slow, do something smarter
         axy = self.coords(self.sim_N)
-        #for i in range(200):
-        #    xyshift = (np.random.rand(1, 2) - 0.5) * self.sample_width
-        #    xy_shifted = axy + xyshift
-        #    O = np.maximum(O, ((np.sum((xy_shifted)**2, axis=2) < 5**2)  * (np.random.rand(1) + 1)))
+        for i in range(200):
+            xyshift = (np.random.rand(1, 2) - 0.5) * self.sample_width
+            xy_shifted = axy + xyshift
+            O = np.maximum(O, ((np.sum((xy_shifted)**2, axis=2) < 5**2)  * (np.random.rand(1) + 1)))
         return np.maximum(O, (np.sum((axy)**2, axis=2) < 200**2)) * 20
 
     def illumination(self, pattern_deg):
@@ -82,14 +86,19 @@ class SIMSimulatedSystem:
         pattern_um = (pattern_deg * deg_to_um) + center_um
         pattern_idx = np.round(pattern_um / self._dx * self.sim_oversample).astype(np.int32)
         pattern_idx[:,[0, 1]] = pattern_idx[:,[1, 0]] # swap x, y to row, col
-        I.ravel()[np.ravel_multi_index(pattern_idx.T, I.shape)] = 1.0
+        I.ravel()[np.ravel_multi_index(pattern_idx.T, I.shape, mode='clip')] = 1.0
         return gaussian_filter(I, self.illumination_res/self._dx*self.sim_oversample/2)
 
     def project_patterns_and_take_images(self, patterns_deg, pattern_rate_Hz):
-        O = self.sample()
+        O = self.O
         Im = np.zeros((7, self.N, self.N))
         for i in range(7):
             pattern_deg = patterns_deg[i, :, :]
             I_n = self.illumination(pattern_deg)
             Im[i] = fft_downsample(gaussian_filter(I_n * O, self._res/self._dx*self.sim_oversample/2), block_size=self.sim_oversample)
         return Im
+
+    def project_patterns_looping(self, patterns_deg, pattern_rate_Hz, run_event):
+        while run_event.is_set():
+            print("Project")
+            time.sleep(1)

@@ -1,8 +1,5 @@
 import nidaq_pattern
-try:
-    import pco
-except ImportError:
-    print("PCO lib not found")
+import pco
 
 class SIMHardwareSystem:
     def __init__(self):
@@ -19,6 +16,10 @@ class SIMHardwareSystem:
             'acquire': 'auto',
         }
         self.configure_camera(1e-3)
+
+    def disconnect(self):
+        self.camera.close()
+        self.camera = None
 
     def configure_camera(self, exposure_time_sec):
         if exposure_time_sec != self.camera_exposure:
@@ -42,3 +43,6 @@ class SIMHardwareSystem:
 
         images, metadatas = self.camera.images()
         return np.stack(images)
+
+    def project_patterns_looping(self, patterns_deg, pattern_rate_Hz, run_event):
+        nidaq_pattern.project_patterns(patterns_deg, pattern_rate_Hz, loop=True, loop_event = run_event)
