@@ -8,6 +8,8 @@ import threading
 import tifffile
 from pathlib import Path
 from detect_orientation_dialog import DetectOrientationDialog
+import subprocess
+import json
 
 import matplotlib
 matplotlib.use('Qt5Agg')
@@ -30,6 +32,10 @@ if simulate:
     from sim_simulated_system import SIMSimulatedSystem as SIMSystem
 else:
     from sim_hardware_system import SIMHardwareSystem as SIMSystem
+
+
+def get_git_revision_short_hash() -> str:
+    return subprocess.check_output(['git', 'describe', '--always', '--dirty', '--tags']).decode('ascii').strip()
 
 
 class MplCanvas(FigureCanvasQTAgg):
@@ -124,6 +130,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.exposure_lbl = QtWidgets.QLabel()
         layout.addRow("Exposure time", self.exposure_lbl)
+
+        self.image_notes_txt = QtWidgets.QLineEdit("")
+        layout.addRow("Recording notes", self.image_notes_txt)
 
         self.reconstruction_size_txt = QtWidgets.QLineEdit("256")
         layout.addRow("Reconstruction size N", self.reconstruction_size_txt)
@@ -226,6 +235,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.p.debug = False
         self.p.use_filter = False
 
+        self.frames = None
+        self.metadata = None
+
     def connect_camera(self):
         self.sim_system.connect()
 
@@ -250,8 +262,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.steps_y_lbl.setText(str(steps_y))
         self.dot_distance_x_lbl.setText(str(distance_x))
 
-        orientation_deg = float(self.orientation_deg_txt.text());
-        self.pattern_rate_Hz = float(self.pattern_hz_txt.text());
+        orientation_deg = float(self.orientation_deg_txt.text())
+        self.pattern_rate_Hz = float(self.pattern_hz_txt.text())
 
         pattern_deg = hex_grid.projection_hex_pattern_deg(distance_x, steps_x, steps_y, orientation_rad = np.deg2rad(orientation_deg), aspect_ratio=aspect)
 
@@ -273,6 +285,15 @@ class MainWindow(QtWidgets.QMainWindow):
     def take_images(self):
         self.create_patterns()
         self.frames = self.sim_system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz)
+
+        self.metadata = {
+            "orientation_deg": float(self.orientation_deg_txt.text()),
+            "pattern_rate_Hz": float(self.pattern_hz_txt.text()),
+            "desired_distance": float(self.desired_distance_txt.text()),
+            "grating_distance_x": float(self.grating_distance_x_txt.text()),
+            "grating_distance_y": float(self.grating_distance_y_txt.text()),
+            "software_version": get_git_revision_short_hash(),
+        }
         self.plot_images()
 
     def measure_orientation(self):
@@ -316,6 +337,10 @@ class MainWindow(QtWidgets.QMainWindow):
             if path.suffix == "":
                 filename += ".tiff"
             tifffile.imwrite(filename, self.frames)
+
+            self.metadata["recording_notes"] = self.image_notes_txt.text()
+            with open(f"{Path.joinpath(path.parent, path.stem)}_metadata.json", "w") as f:
+                json.dump(self.metadata, f)
 
     def reconstruct_image(self):
         N = int(self.reconstruction_size_txt.text())
