@@ -90,7 +90,7 @@ class SIMSimulatedSystem:
         return O
 
     def grating(self):
-        grating_dots = np.linspace(-self.grating_distance_deg * self.grating_repeats / 2, self.grating_distance_deg * self.grating_repeats / 2, self.grating_repeats)
+        grating_dots = np.linspace(-self.grating_distance_deg * (self.grating_repeats - 1) / 2, self.grating_distance_deg * (self.grating_repeats - 1) / 2, self.grating_repeats)
         dots_xx, dots_yy = np.meshgrid(grating_dots, grating_dots)
         dots_xy = np.zeros((self.grating_repeats, self.grating_repeats, 2))
         dots_xy[:, :, 0] = dots_xx

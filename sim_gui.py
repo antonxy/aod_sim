@@ -93,20 +93,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle('Hex SIM GUI')
         layout = QtWidgets.QFormLayout()
 
-        self.distance_txt = QtWidgets.QLineEdit("0.0345")
-        layout.addRow("Distance [deg]", self.distance_txt)
-
-        self.steps_x_txt = QtWidgets.QLineEdit("18")
-        layout.addRow("Steps X", self.steps_x_txt)
-
-        self.steps_y_txt = QtWidgets.QLineEdit("10")
-        layout.addRow("Steps Y", self.steps_y_txt)
-
         self.orientation_deg_txt = QtWidgets.QLineEdit("0")
         layout.addRow("Orientation [deg]", self.orientation_deg_txt)
 
-        self.aspect_txt = QtWidgets.QLineEdit("1.045")
-        layout.addRow("Aspect ratio", self.aspect_txt)
+        self.desired_distance_txt = QtWidgets.QLineEdit("0.0345")
+        layout.addRow("Desired dot distance [deg]", self.desired_distance_txt)
+
+        self.grating_distance_x_txt = QtWidgets.QLineEdit("0.5")
+        layout.addRow("Grating dot distance x [deg]", self.grating_distance_x_txt)
+
+        self.grating_distance_y_txt = QtWidgets.QLineEdit("0.5")
+        layout.addRow("Grating dot distance y [deg]", self.grating_distance_y_txt)
+
+        self.steps_x_lbl = QtWidgets.QLabel()
+        layout.addRow("Steps X", self.steps_x_lbl)
+
+        self.steps_y_lbl = QtWidgets.QLabel()
+        layout.addRow("Steps Y", self.steps_y_lbl)
+
+        self.dot_distance_x_lbl = QtWidgets.QLabel()
+        layout.addRow("Dot distance x", self.dot_distance_x_lbl)
+
+        self.aspect_lbl = QtWidgets.QLabel()
+        layout.addRow("Aspect ratio", self.aspect_lbl)
 
         self.pattern_hz_txt = QtWidgets.QLineEdit("40000")
         layout.addRow("Projection rate [Hz]", self.pattern_hz_txt)
@@ -216,14 +225,27 @@ class MainWindow(QtWidgets.QMainWindow):
         self.sim_system.disconnect()
 
     def create_patterns(self):
-        dist_deg = float(self.distance_txt.text());
-        num_x = int(self.steps_x_txt.text());
-        num_y = int(self.steps_y_txt.text());
+        desired_distance = float(self.desired_distance_txt.text())
+        grating_distance_x = float(self.grating_distance_x_txt.text())
+        steps_x = round(grating_distance_x / desired_distance)
+        distance_x = grating_distance_x / steps_x
+
+        grating_distance_y = float(self.grating_distance_y_txt.text())
+        desired_distance_y = np.sin(np.deg2rad(60)) * distance_x * 2
+        steps_y = round(grating_distance_y / desired_distance_y)
+        distance_y = grating_distance_y / steps_y
+
+        aspect = grating_distance_y / (desired_distance_y * steps_y)
+        self.aspect_lbl.setText(str(aspect))
+
+        self.steps_x_lbl.setText(str(steps_x))
+        self.steps_y_lbl.setText(str(steps_y))
+        self.dot_distance_x_lbl.setText(str(distance_x))
+
         orientation_deg = float(self.orientation_deg_txt.text());
-        aspect = float(self.aspect_txt.text());
         self.pattern_rate_Hz = float(self.pattern_hz_txt.text());
 
-        pattern_deg = hex_grid.projection_hex_pattern_deg(dist_deg, num_x, num_y, orientation_rad = np.deg2rad(orientation_deg), aspect_ratio=aspect)
+        pattern_deg = hex_grid.projection_hex_pattern_deg(distance_x, steps_x, steps_y, orientation_rad = np.deg2rad(orientation_deg), aspect_ratio=aspect)
 
         self.exposure_time_sec = pattern_deg.shape[1] / self.pattern_rate_Hz
         self.exposure_lbl.setText(f"{self.exposure_time_sec * 1e3:.1f} ms")
@@ -233,6 +255,8 @@ class MainWindow(QtWidgets.QMainWindow):
         for i in range(7):
             ax1.scatter(pattern_deg[i, :, 0], pattern_deg[i, :, 1])
         ax2.scatter(pattern_deg[0, :, 0], pattern_deg[0, :, 1])
+        ax1.set_aspect(1)
+        ax2.set_aspect(1)
         self.pattern_plot.draw()
 
         self.pattern_deg = pattern_deg

@@ -2,25 +2,25 @@ import numpy as np
 
 def hex_grid_positions(x_dist, tiles_x, tiles_y):
     """
-          o           o
-
-    o           o           o -
+          o           o       |
+                              |
+    o           o             -
                               │
           o           o       │
                               │
-    o           o           o -
+    o           o             -
                               │
-          o           o       │tiles_y
+          o           o       │ tiles_y = 4
                               │
-    o           o           o -
-                              │
-          o           o       │
-                              │
-    o──────────►o           o -
+    o           o             -
+     off_x                    │
+    ───── o           o       │
+          |off_y              │
+    o──────────►o             -
        x_dist
 
     |───────────|───────────|
-           tiles_x
+           tiles_x =
     """
     off_y = np.sin(np.deg2rad(60)) * x_dist
     off_x = np.cos(np.deg2rad(60)) * x_dist
