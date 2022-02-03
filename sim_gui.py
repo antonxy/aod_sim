@@ -144,6 +144,20 @@ class MainWindow(QtWidgets.QMainWindow):
         disconnect_camera_action.triggered.connect(self.disconnect_camera)
         cameraMenu.addAction(disconnect_camera_action)
 
+        patternMenu = self.menuBar().addMenu("&Pattern")
+        update_pattern_action = QtWidgets.QAction("&Update Pattern", self)
+        update_pattern_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_P))
+        update_pattern_action.triggered.connect(self.create_patterns)
+        patternMenu.addAction(update_pattern_action)
+
+        project_pattern_loop_action = QtWidgets.QAction("Project &Pattern", self)
+        project_pattern_loop_action.triggered.connect(self.project_pattern_loop)
+        patternMenu.addAction(project_pattern_loop_action)
+
+        measure_orientation_action = QtWidgets.QAction("&Measure Orientation", self)
+        measure_orientation_action.triggered.connect(self.measure_orientation)
+        patternMenu.addAction(measure_orientation_action)
+
         imageMenu = self.menuBar().addMenu("&Image")
         take_images_action = QtWidgets.QAction("Take &Images", self)
         take_images_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_Return))
@@ -159,14 +173,6 @@ class MainWindow(QtWidgets.QMainWindow):
         save_images_action.setShortcut(QtGui.QKeySequence.Save)
         save_images_action.triggered.connect(self.save_images)
         imageMenu.addAction(save_images_action)
-
-        project_pattern_loop_action = QtWidgets.QAction("Project &Pattern", self)
-        project_pattern_loop_action.triggered.connect(self.project_pattern_loop)
-        imageMenu.addAction(project_pattern_loop_action)
-
-        measure_orientation_action = QtWidgets.QAction("&Measure Orientation", self)
-        measure_orientation_action.triggered.connect(self.measure_orientation)
-        imageMenu.addAction(measure_orientation_action)
 
         reconstructMenu = self.menuBar().addMenu("&Reconstruct")
         reconstruct_images_action = QtWidgets.QAction("&Reconstruct Images", self)
@@ -248,7 +254,7 @@ class MainWindow(QtWidgets.QMainWindow):
         pattern_deg = hex_grid.projection_hex_pattern_deg(distance_x, steps_x, steps_y, orientation_rad = np.deg2rad(orientation_deg), aspect_ratio=aspect)
 
         self.exposure_time_sec = pattern_deg.shape[1] / self.pattern_rate_Hz
-        self.exposure_lbl.setText(f"{self.exposure_time_sec * 1e3:.1f} ms")
+        self.exposure_lbl.setText(f"{self.exposure_time_sec * 1e3:.1f} ms * 7 = {self.exposure_time_sec * 1e3 * 7:.1f} ms")
 
         self.pattern_plot.fig.clear()
         ax1, ax2 = self.pattern_plot.fig.subplots(1, 2, sharex=True, sharey=True)
@@ -268,6 +274,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plot_images()
 
     def measure_orientation(self):
+        pattern_deg = np.zeros((7, 500, 2))
+        self.frames = self.sim_system.project_patterns_and_take_images(pattern_deg, 1000)
+        self.plot_images()
+
         orientation = DetectOrientationDialog.run_calibration_dialog(self.frames[0], self)
         if orientation is not None:
             self.orientation_deg_txt.setText(str(orientation))
