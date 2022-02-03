@@ -23,7 +23,9 @@ matplotlib.rcParams["figure.subplot.hspace"] = 0.1
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
-simulate = True
+import sys
+
+simulate = len(sys.argv) > 1 and sys.argv[1] == 'sim'
 if simulate:
     from sim_simulated_system import SIMSimulatedSystem as SIMSystem
 else:
