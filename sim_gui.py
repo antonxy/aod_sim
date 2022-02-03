@@ -99,8 +99,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setWindowTitle('Hex SIM GUI')
-        layout = QtWidgets.QFormLayout()
 
+        recording_group = QtWidgets.QGroupBox("Recording")
+        layout = QtWidgets.QFormLayout()
         self.orientation_deg_txt = QtWidgets.QLineEdit("0")
         layout.addRow("Orientation [deg]", self.orientation_deg_txt)
 
@@ -134,6 +135,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.image_notes_txt = QtWidgets.QLineEdit("")
         layout.addRow("Recording notes", self.image_notes_txt)
 
+        recording_group.setLayout(layout)
+
+        reconstruction_group = QtWidgets.QGroupBox("Reconstruction")
+        layout = QtWidgets.QFormLayout()
+
         self.reconstruction_size_txt = QtWidgets.QLineEdit("256")
         layout.addRow("Reconstruction size N", self.reconstruction_size_txt)
 
@@ -145,6 +151,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.reconstruction_eta_txt = QtWidgets.QLineEdit("0.5")
         layout.addRow("Reconstruction eta", self.reconstruction_eta_txt)
+
+        reconstruction_group.setLayout(layout)
+
+        layout = QtWidgets.QVBoxLayout()
+        hlayout = QtWidgets.QHBoxLayout()
+        hlayout.addWidget(recording_group)
+        hlayout.addWidget(reconstruction_group)
+        layout.addLayout(hlayout)
+
 
         cameraMenu = self.menuBar().addMenu("&Camera")
         connect_camera_action = QtWidgets.QAction("&Connect Camera", self)
