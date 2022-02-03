@@ -48,15 +48,11 @@ class MplCanvas(FigureCanvasQTAgg):
         self.fig.clear()
         self.axes = self.fig.add_subplot(111)
 
-class PlotWidget(QtWidgets.QWidget):
+class ClimWidget(QtWidgets.QWidget):
     def __init__(self, parent=None):
-        super(PlotWidget, self).__init__(parent)
-        lay = QtWidgets.QVBoxLayout()
-        self.plot = MplCanvas(self, width=5, height=100, dpi=100)
-
+        super(ClimWidget, self).__init__(parent)
+        self.parent = parent
         layh = QtWidgets.QHBoxLayout()
-        toolbar = NavigationToolbar(self.plot, self)
-        layh.addWidget(toolbar)
 
         self.clim_min_txt = QtWidgets.QLineEdit("None")
         self.clim_min_txt.returnPressed.connect(self.clim_changed)
@@ -68,9 +64,7 @@ class PlotWidget(QtWidgets.QWidget):
         layh.addWidget(self.clim_min_txt)
         layh.addWidget(self.clim_max_txt)
 
-        lay.addLayout(layh)
-        lay.addWidget(self.plot)
-        self.setLayout(lay)
+        self.setLayout(layh)
 
         self.clim_axes = None
 
@@ -85,13 +79,38 @@ class PlotWidget(QtWidgets.QWidget):
         if self.clim_axes is not None:
             for ax in self.clim_axes:
                 ax.set(clim = (cmin, cmax))
-            self.plot.draw()
+            self.parent.plot.draw()
 
     def connect_clim(self, axes):
         if not hasattr(axes, "__iter__"):
             axes = [axes]
         self.clim_axes = axes
         self.clim_changed()
+
+class PlotWidget(QtWidgets.QWidget):
+    def __init__(self, parent=None, num_clim = 1):
+        super(PlotWidget, self).__init__(parent)
+        lay = QtWidgets.QVBoxLayout()
+        self.plot = MplCanvas(self, width=5, height=100, dpi=100)
+
+        layh = QtWidgets.QHBoxLayout()
+        toolbar = NavigationToolbar(self.plot, self)
+        layh.addWidget(toolbar)
+        layh.addStretch(1)
+
+        self.clim_widgets = []
+        for i in range(num_clim):
+            climw = ClimWidget(self)
+            self.clim_widgets.append(climw)
+            layh.addSpacing(10)
+            layh.addWidget(climw)
+
+        lay.addLayout(layh)
+        lay.addWidget(self.plot)
+        self.setLayout(lay)
+
+    def connect_clim(self, axes, clim_num = 0):
+        self.clim_widgets[clim_num].connect_clim(axes)
 
 
 
@@ -151,6 +170,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.reconstruction_eta_txt = QtWidgets.QLineEdit("0.5")
         layout.addRow("Reconstruction eta", self.reconstruction_eta_txt)
+
+        self.use_filter_chb = QtWidgets.QCheckBox("Use frequency space filtering")
+        layout.addRow("Filter", self.use_filter_chb)
 
         reconstruction_group.setLayout(layout)
 
@@ -237,7 +259,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.carrier_plot = PlotWidget(self)
         self.tab_widget.addTab(self.carrier_plot, "Carrier")
 
-        self.recon_plot = PlotWidget(self)
+        self.recon_plot = PlotWidget(self, num_clim = 2)
         self.tab_widget.addTab(self.recon_plot, "Reconstructed Image")
 
         widget = QtWidgets.QWidget()
@@ -248,7 +270,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.p = HexSimProcessor()
         self.p.debug = False
-        self.p.use_filter = False
 
         self.frames = None
         self.metadata = None
@@ -391,13 +412,15 @@ class MainWindow(QtWidgets.QMainWindow):
         assert self.frames.shape[0] == 7
         frames = self.frames[:, offset_y:offset_y + N, offset_x:offset_x + N]
 
+        self.p.use_filter = self.use_filter_chb.isChecked()
         reconstruct = self.p.reconstruct_fftw(frames)
 
         self.recon_plot.plot.fig.clear()
         ax1, ax2 = self.recon_plot.plot.fig.subplots(1, 2, sharex=True, sharey=True)
         im1 = ax1.imshow(reconstruct / 4)
         im2 = ax2.imshow(scipy.ndimage.zoom(np.sum(frames, axis=0), (2, 2), order=1))
-        self.recon_plot.connect_clim([im1, im2])
+        self.recon_plot.connect_clim(im1, 0)
+        self.recon_plot.connect_clim(im2, 1)
         self.recon_plot.plot.draw()
 
     def project_pattern_loop(self):
