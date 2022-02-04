@@ -1,5 +1,6 @@
 import nidaq_pattern
 import pco
+import numpy as np
 
 class SIMHardwareSystem:
     def __init__(self):

@@ -9,7 +9,7 @@ def angle_deg_to_frequency_MHz(angle_deg):
 
     freq_MHz = F_central + ((angle_deg / (angleRange / 2)) * (bandWidth / 2))
 
-    bandWidthCheck = 25  # Could be increased to 50 but set to 25 for now just to be safe
+    bandWidthCheck = 40  # Could be increased to 50 but set to 25 for now just to be safe
     F_max = F_central + bandWidthCheck/2  # Maximum scanning frequency. The central frequency can be optimized so that the diffraction efficiency is similar within the scanning range
     F_min = F_central - bandWidthCheck/2  # Minimum scanning frequency
     assert((freq_MHz <= F_max).all())

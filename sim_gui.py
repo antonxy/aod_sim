@@ -197,6 +197,14 @@ class MainWindow(QtWidgets.QMainWindow):
         update_pattern_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_P))
         update_pattern_action.triggered.connect(self.create_patterns)
         patternMenu.addAction(update_pattern_action)
+        
+        project_zero_pattern_loop_action = QtWidgets.QAction("Project &Zero Pattern", self)
+        project_zero_pattern_loop_action.triggered.connect(self.project_zero_pattern_loop)
+        patternMenu.addAction(project_zero_pattern_loop_action)
+        
+        project_single_pattern_loop_action = QtWidgets.QAction("Project &Single Pattern", self)
+        project_single_pattern_loop_action.triggered.connect(self.project_single_pattern_loop)
+        patternMenu.addAction(project_single_pattern_loop_action)
 
         project_pattern_loop_action = QtWidgets.QAction("Project &Pattern", self)
         project_pattern_loop_action.triggered.connect(self.project_pattern_loop)
@@ -333,8 +341,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plot_images()
 
     def measure_orientation(self):
-        pattern_deg = np.zeros((7, 500, 2))
-        self.frames = self.sim_system.project_patterns_and_take_images(pattern_deg, 1000)
+        pattern_deg = np.zeros((7, 300, 2))
+        self.frames = self.sim_system.project_patterns_and_take_images(pattern_deg, 10000)
         self.plot_images()
 
         orientation = DetectOrientationDialog.run_calibration_dialog(self.frames[0], self)
@@ -434,6 +442,31 @@ class MainWindow(QtWidgets.QMainWindow):
         msgBox.exec()
         run_event.clear()
         thread.join()
+    
+    def project_single_pattern_loop(self):
+        self.create_patterns()
+        run_event = threading.Event()
+        run_event.set()
+        thread = threading.Thread(target = self.sim_system.project_patterns_looping, args = (self.pattern_deg[0, :, :], self.pattern_rate_Hz, run_event))
+        thread.start()
+        msgBox = QtWidgets.QMessageBox()
+        msgBox.setText("Projecting single pattern. Close dialog to stop")
+        msgBox.exec()
+        run_event.clear()
+        thread.join()
+        
+    def project_zero_pattern_loop(self):
+        pattern_deg = np.zeros((1, 500, 2))
+        run_event = threading.Event()
+        run_event.set()
+        thread = threading.Thread(target = self.sim_system.project_patterns_looping, args = (pattern_deg, 500, run_event))
+        thread.start()
+        msgBox = QtWidgets.QMessageBox()
+        msgBox.setText("Projecting zero pattern. Close dialog to stop")
+        msgBox.exec()
+        run_event.clear()
+        thread.join()
+    
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])
