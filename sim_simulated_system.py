@@ -122,7 +122,7 @@ class SIMSimulatedSystem:
 
         return gaussian_filter(I, self.illumination_res/self._dx*self.sim_oversample/2)
 
-    def project_patterns_and_take_images(self, patterns_deg, pattern_rate_Hz):
+    def project_patterns_and_take_images(self, patterns_deg, pattern_rate_Hz, delay_sec):
         O = self.O
         Im = np.zeros((7, self.N, self.N))
         for i in range(7):

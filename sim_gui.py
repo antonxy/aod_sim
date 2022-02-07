@@ -148,6 +148,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.pattern_hz_txt = QtWidgets.QLineEdit("40000")
         layout.addRow("Projection rate [Hz]", self.pattern_hz_txt)
 
+        self.pattern_delay_txt = QtWidgets.QLineEdit("0.0")
+        layout.addRow("Pattern delay [sec]", self.pattern_delay_txt)
+
         self.exposure_lbl = QtWidgets.QLabel()
         layout.addRow("Exposure time", self.exposure_lbl)
 
@@ -328,11 +331,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def take_images(self):
         self.create_patterns()
-        self.frames = self.sim_system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz)
+        pattern_delay_sec = float(self.pattern_delay_txt.text())
+        self.frames = self.sim_system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz, pattern_delay_sec)
 
         self.metadata = {
             "orientation_deg": float(self.orientation_deg_txt.text()),
             "pattern_rate_Hz": float(self.pattern_hz_txt.text()),
+            "pattern_delay_sec": pattern_delay_sec,
             "desired_distance": float(self.desired_distance_txt.text()),
             "grating_distance_x": float(self.grating_distance_x_txt.text()),
             "grating_distance_y": float(self.grating_distance_y_txt.text()),
