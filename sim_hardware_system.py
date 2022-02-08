@@ -71,7 +71,7 @@ class SIMHardwareSystem:
         patterns_deg_delay, pattern_delay_sec = pattern_insert_delay(patterns_deg, pattern_rate_Hz, delay_sec)
         self.configure_camera(exposure_time_sec, delay_sec = pattern_delay_sec - delay_sec)
 
-        self.camera.record(number_of_images=7, mode='sequence non blocking')
+        self.camera.record(number_of_images=patterns_deg.shape[0], mode='sequence non blocking')
 
         nidaq_pattern.project_patterns(patterns_deg_delay, pattern_rate_Hz)
         while True:
@@ -82,6 +82,9 @@ class SIMHardwareSystem:
 
         images, metadatas = self.camera.images()
         return np.stack(images)
+
+    def take_widefield_image(self):
+        return None
 
     def project_patterns_looping(self, patterns_deg, pattern_rate_Hz, run_event):
         nidaq_pattern.project_patterns(patterns_deg, pattern_rate_Hz, loop=True, loop_event = run_event)

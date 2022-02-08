@@ -124,12 +124,15 @@ class SIMSimulatedSystem:
 
     def project_patterns_and_take_images(self, patterns_deg, pattern_rate_Hz, delay_sec):
         O = self.O
-        Im = np.zeros((7, self.N, self.N))
-        for i in range(7):
+        Im = np.zeros((patterns_deg.shape[0], self.N, self.N))
+        for i in range(patterns_deg.shape[0]):
             pattern_deg = patterns_deg[i, :, :]
             I_n = self.illumination(pattern_deg)
             Im[i] = fft_downsample(gaussian_filter(I_n * O, self._res/self._dx*self.sim_oversample/2), block_size=self.sim_oversample)
         return Im
+
+    def take_widefield_image(self):
+        return fft_downsample(gaussian_filter(self.O, self._res/self._dx*self.sim_oversample/2), block_size=self.sim_oversample)
 
     def project_patterns_looping(self, patterns_deg, pattern_rate_Hz, run_event):
         while run_event.is_set():

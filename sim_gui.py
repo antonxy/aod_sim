@@ -2,7 +2,6 @@ from PySide2 import QtCore, QtWidgets, QtGui
 import hex_grid
 import numpy as np
 import time
-from hexSimProcessor import HexSimProcessor
 import scipy
 import threading
 import tifffile
@@ -11,21 +10,10 @@ from detect_orientation_dialog import DetectOrientationDialog
 import subprocess
 import json
 
-import matplotlib
-matplotlib.use('Qt5Agg')
-
-#matplotlib.rcParams["figure.autolayout"] = True  # tight layout, leads to plots moving around sometimes
-matplotlib.rcParams["figure.subplot.bottom"] = 0.04
-matplotlib.rcParams["figure.subplot.top"] = 1.0
-matplotlib.rcParams["figure.subplot.left"] = 0.04
-matplotlib.rcParams["figure.subplot.right"] = 1.0
-matplotlib.rcParams["figure.subplot.wspace"] = 0.1
-matplotlib.rcParams["figure.subplot.hspace"] = 0.1
-
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
-from matplotlib.figure import Figure
+from widgets import PlotWidget
 
 import sys
+import imaging_method
 
 simulate = len(sys.argv) > 1 and sys.argv[1] == 'sim'
 if simulate:
@@ -38,94 +26,18 @@ def get_git_revision_short_hash() -> str:
     return subprocess.check_output(['git', 'describe', '--always', '--dirty', '--tags']).decode('ascii').strip()
 
 
-class MplCanvas(FigureCanvasQTAgg):
-    def __init__(self, parent=None, width=5, height=4, dpi=100):
-        self.fig = Figure(figsize=(width, height), dpi=dpi)
-        self.axes = self.fig.add_subplot(111)
-        super(MplCanvas, self).__init__(self.fig)
-
-    def clear(self):
-        self.fig.clear()
-        self.axes = self.fig.add_subplot(111)
-
-class ClimWidget(QtWidgets.QWidget):
-    def __init__(self, parent=None):
-        super(ClimWidget, self).__init__(parent)
-        self.parent = parent
-        layh = QtWidgets.QHBoxLayout()
-
-        self.clim_min_txt = QtWidgets.QLineEdit("None")
-        self.clim_min_txt.returnPressed.connect(self.clim_changed)
-        self.clim_min_txt.setMaximumWidth(100)
-        self.clim_max_txt = QtWidgets.QLineEdit("None")
-        self.clim_max_txt.returnPressed.connect(self.clim_changed)
-        self.clim_max_txt.setMaximumWidth(100)
-
-        layh.addWidget(self.clim_min_txt)
-        layh.addWidget(self.clim_max_txt)
-
-        self.setLayout(layh)
-
-        self.clim_axes = None
-
-    def clim_changed(self):
-        cmin = None
-        if self.clim_min_txt.text() != "None":
-            cmin = float(self.clim_min_txt.text())
-        cmax = None
-        if self.clim_max_txt.text() != "None":
-            cmax = float(self.clim_max_txt.text())
-
-        if self.clim_axes is not None:
-            for ax in self.clim_axes:
-                ax.set(clim = (cmin, cmax))
-            self.parent.plot.draw()
-
-    def connect_clim(self, axes):
-        if not hasattr(axes, "__iter__"):
-            axes = [axes]
-        self.clim_axes = axes
-        self.clim_changed()
-
-class PlotWidget(QtWidgets.QWidget):
-    def __init__(self, parent=None, num_clim = 1):
-        super(PlotWidget, self).__init__(parent)
-        lay = QtWidgets.QVBoxLayout()
-        self.plot = MplCanvas(self, width=5, height=100, dpi=100)
-
-        layh = QtWidgets.QHBoxLayout()
-        toolbar = NavigationToolbar(self.plot, self)
-        layh.addWidget(toolbar)
-        layh.addStretch(1)
-
-        self.clim_widgets = []
-        for i in range(num_clim):
-            climw = ClimWidget(self)
-            self.clim_widgets.append(climw)
-            layh.addSpacing(10)
-            layh.addWidget(climw)
-
-        lay.addLayout(layh)
-        lay.addWidget(self.plot)
-        self.setLayout(lay)
-
-    def connect_clim(self, axes, clim_num = 0):
-        self.clim_widgets[clim_num].connect_clim(axes)
-
-
-
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setWindowTitle('Hex SIM GUI')
 
+        self.sim_imaging = imaging_method.SIMImaging()
+        self.lmi_imaging = imaging_method.LMIImaging()
+
         recording_group = QtWidgets.QGroupBox("Recording")
         layout = QtWidgets.QFormLayout()
         self.orientation_deg_txt = QtWidgets.QLineEdit("0")
         layout.addRow("Orientation [deg]", self.orientation_deg_txt)
-
-        self.desired_distance_txt = QtWidgets.QLineEdit("0.0345")
-        layout.addRow("Desired dot distance [deg]", self.desired_distance_txt)
 
         self.grating_distance_x_txt = QtWidgets.QLineEdit("0.5")
         layout.addRow("Grating dot distance x [deg]", self.grating_distance_x_txt)
@@ -133,56 +45,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.grating_distance_y_txt = QtWidgets.QLineEdit("0.5")
         layout.addRow("Grating dot distance y [deg]", self.grating_distance_y_txt)
 
-        self.steps_x_lbl = QtWidgets.QLabel()
-        layout.addRow("Steps X", self.steps_x_lbl)
-
-        self.steps_y_lbl = QtWidgets.QLabel()
-        layout.addRow("Steps Y", self.steps_y_lbl)
-
-        self.dot_distance_x_lbl = QtWidgets.QLabel()
-        layout.addRow("Dot distance x", self.dot_distance_x_lbl)
-
-        self.aspect_lbl = QtWidgets.QLabel()
-        layout.addRow("Aspect ratio", self.aspect_lbl)
-
-        self.pattern_hz_txt = QtWidgets.QLineEdit("40000")
-        layout.addRow("Projection rate [Hz]", self.pattern_hz_txt)
-
         self.pattern_delay_txt = QtWidgets.QLineEdit("0.0")
         layout.addRow("Pattern delay [sec]", self.pattern_delay_txt)
-
-        self.exposure_lbl = QtWidgets.QLabel()
-        layout.addRow("Exposure time", self.exposure_lbl)
 
         self.image_notes_txt = QtWidgets.QLineEdit("")
         layout.addRow("Recording notes", self.image_notes_txt)
 
         recording_group.setLayout(layout)
 
-        reconstruction_group = QtWidgets.QGroupBox("Reconstruction")
-        layout = QtWidgets.QFormLayout()
-
-        self.reconstruction_size_txt = QtWidgets.QLineEdit("256")
-        layout.addRow("Reconstruction size N", self.reconstruction_size_txt)
-
-        self.reconstruction_offset_x = QtWidgets.QLineEdit("0")
-        layout.addRow("Reconstruction offset x", self.reconstruction_offset_x)
-
-        self.reconstruction_offset_y = QtWidgets.QLineEdit("0")
-        layout.addRow("Reconstruction offset y", self.reconstruction_offset_y)
-
-        self.reconstruction_eta_txt = QtWidgets.QLineEdit("0.5")
-        layout.addRow("Reconstruction eta", self.reconstruction_eta_txt)
-
-        self.use_filter_chb = QtWidgets.QCheckBox("Use frequency space filtering")
-        layout.addRow("Filter", self.use_filter_chb)
-
-        reconstruction_group.setLayout(layout)
 
         layout = QtWidgets.QVBoxLayout()
         hlayout = QtWidgets.QHBoxLayout()
         hlayout.addWidget(recording_group)
-        hlayout.addWidget(reconstruction_group)
+        hlayout.addWidget(self.sim_imaging.parameters_widget)
+        hlayout.addWidget(self.lmi_imaging.parameters_widget)
+        hlayout.addWidget(self.sim_imaging.reconstruction_parameters_widget)
         layout.addLayout(hlayout)
 
 
@@ -200,11 +77,11 @@ class MainWindow(QtWidgets.QMainWindow):
         update_pattern_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_P))
         update_pattern_action.triggered.connect(self.create_patterns)
         patternMenu.addAction(update_pattern_action)
-        
+
         project_zero_pattern_loop_action = QtWidgets.QAction("Project &Zero Pattern", self)
         project_zero_pattern_loop_action.triggered.connect(self.project_zero_pattern_loop)
         patternMenu.addAction(project_zero_pattern_loop_action)
-        
+
         project_single_pattern_loop_action = QtWidgets.QAction("Project &Single Pattern", self)
         project_single_pattern_loop_action.triggered.connect(self.project_single_pattern_loop)
         patternMenu.addAction(project_single_pattern_loop_action)
@@ -252,35 +129,21 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tab_widget = QtWidgets.QTabWidget(self)
         layout.addWidget(self.tab_widget)
 
-        lay = QtWidgets.QVBoxLayout()
-        self.pattern_plot = MplCanvas(self, width=5, height=4, dpi=100)
-        toolbar = NavigationToolbar(self.pattern_plot, self)
-        lay.addWidget(toolbar)
-        lay.addWidget(self.pattern_plot)
-        w = QtWidgets.QWidget()
-        w.setLayout(lay)
-        self.tab_widget.addTab(w, "Pattern")
+        self.tab_widget.addTab(self.sim_imaging.patterns_widget, "SIM Pattern")
+        self.tab_widget.addTab(self.lmi_imaging.patterns_widget, "LMI Pattern")
+        for name, widget in self.sim_imaging.debug_tabs:
+            self.tab_widget.addTab(widget, name)
+        for name, widget in self.lmi_imaging.debug_tabs:
+            self.tab_widget.addTab(widget, name)
 
-        self.image_plot = PlotWidget(self)
-        self.tab_widget.addTab(self.image_plot, "Recorded Images")
-
-        self.fft_plot = PlotWidget(self)
-        self.tab_widget.addTab(self.fft_plot, "FFT")
-
-        self.carrier_plot = PlotWidget(self)
-        self.tab_widget.addTab(self.carrier_plot, "Carrier")
-
-        self.recon_plot = PlotWidget(self, num_clim = 2)
-        self.tab_widget.addTab(self.recon_plot, "Reconstructed Image")
+        self.recon_plot = PlotWidget(None, num_clim = 3)
+        self.tab_widget.addTab(self.recon_plot, "All Reconstructions")
 
         widget = QtWidgets.QWidget()
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
         self.sim_system = SIMSystem()
-
-        self.p = HexSimProcessor()
-        self.p.debug = False
 
         self.frames = None
         self.metadata = None
@@ -291,85 +154,32 @@ class MainWindow(QtWidgets.QMainWindow):
     def disconnect_camera(self):
         self.sim_system.disconnect()
 
+    def parse_global_params(self):
+        global_params = {
+            "grating_distance_x": float(self.grating_distance_x_txt.text()),
+            "grating_distance_y": float(self.grating_distance_y_txt.text()),
+            "orientation_deg": float(self.orientation_deg_txt.text()),
+            "pattern_delay_sec": float(self.pattern_delay_txt.text()),
+        }
+        return global_params
+
     def create_patterns(self):
-        desired_distance = float(self.desired_distance_txt.text())
-        grating_distance_x = float(self.grating_distance_x_txt.text())
-        steps_x = round(grating_distance_x / desired_distance)
-        distance_x = grating_distance_x / steps_x
-
-        grating_distance_y = float(self.grating_distance_y_txt.text())
-        desired_distance_y = np.sin(np.deg2rad(60)) * distance_x * 2
-        steps_y = round(grating_distance_y / desired_distance_y)
-        distance_y = grating_distance_y / steps_y
-
-        aspect = grating_distance_y / (desired_distance_y * steps_y)
-        self.aspect_lbl.setText(str(aspect))
-
-        self.steps_x_lbl.setText(str(steps_x))
-        self.steps_y_lbl.setText(str(steps_y))
-        self.dot_distance_x_lbl.setText(str(distance_x))
-
-        orientation_deg = float(self.orientation_deg_txt.text())
-        self.pattern_rate_Hz = float(self.pattern_hz_txt.text())
-
-        pattern_deg = hex_grid.projection_hex_pattern_deg(distance_x, steps_x, steps_y, orientation_rad = np.deg2rad(orientation_deg), aspect_ratio=aspect)
-
-        self.exposure_time_sec = pattern_deg.shape[1] / self.pattern_rate_Hz
-        self.exposure_lbl.setText(f"{self.exposure_time_sec * 1e3:.1f} ms * 7 = {self.exposure_time_sec * 1e3 * 7:.1f} ms")
-
-        self.pattern_plot.fig.clear()
-        ax1, ax2 = self.pattern_plot.fig.subplots(1, 2, sharex=True, sharey=True)
-        for i in range(7):
-            ax1.scatter(pattern_deg[i, :, 0], pattern_deg[i, :, 1])
-        ax2.scatter(pattern_deg[0, :, 0], pattern_deg[0, :, 1])
-        ax1.set_aspect(1)
-        ax2.set_aspect(1)
-        self.pattern_plot.draw()
-
-        self.pattern_deg = pattern_deg
-
+        self.sim_imaging.update_patterns(global_params = self.parse_global_params())
+        self.lmi_imaging.update_patterns(global_params = self.parse_global_params())
 
     def take_images(self):
         self.create_patterns()
-        pattern_delay_sec = float(self.pattern_delay_txt.text())
-        self.frames = self.sim_system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz, pattern_delay_sec)
-
-        self.metadata = {
-            "orientation_deg": float(self.orientation_deg_txt.text()),
-            "pattern_rate_Hz": float(self.pattern_hz_txt.text()),
-            "pattern_delay_sec": pattern_delay_sec,
-            "desired_distance": float(self.desired_distance_txt.text()),
-            "grating_distance_x": float(self.grating_distance_x_txt.text()),
-            "grating_distance_y": float(self.grating_distance_y_txt.text()),
-            "software_version": get_git_revision_short_hash(),
-        }
-        self.plot_images()
+        self.sim_imaging.take_images(self.sim_system)
+        self.lmi_imaging.take_images(self.sim_system)
+        self.wf_image = self.sim_system.take_widefield_image()
 
     def measure_orientation(self):
-        pattern_deg = np.zeros((7, 300, 2))
-        self.frames = self.sim_system.project_patterns_and_take_images(pattern_deg, 10000)
-        self.plot_images()
+        pattern_deg = np.zeros((1, 300, 2))
+        frames = self.sim_system.project_patterns_and_take_images(pattern_deg, 10000, delay_sec = 0.0)
 
-        orientation = DetectOrientationDialog.run_calibration_dialog(self.frames[0], self)
+        orientation = DetectOrientationDialog.run_calibration_dialog(frames[0], self)
         if orientation is not None:
             self.orientation_deg_txt.setText(str(orientation))
-
-    def plot_images(self):
-        self.image_plot.plot.fig.clear()
-        axs = self.image_plot.plot.fig.subplots(3, 3, sharex=True, sharey=True)
-        ims = []
-        for i in range(3):
-            ims.append(axs[0, i].imshow(self.frames[i]))
-        for i in range(3):
-            ims.append(axs[1, i].imshow(self.frames[i + 3]))
-        ims.append(axs[2, i].imshow(self.frames[6]))
-        self.image_plot.connect_clim(ims)
-        self.image_plot.plot.draw()
-
-        self.fft_plot.plot.clear()
-        im = self.fft_plot.plot.axes.imshow(np.abs(np.fft.fftshift(np.fft.fft2(self.frames[0]))))
-        self.fft_plot.connect_clim(im)
-        self.fft_plot.plot.draw()
 
     def load_images(self):
         file_dialog = QtWidgets.QFileDialog()
@@ -392,74 +202,65 @@ class MainWindow(QtWidgets.QMainWindow):
                 json.dump(self.metadata, f)
 
     def reconstruct_image(self):
-        N = int(self.reconstruction_size_txt.text())
-        offset_x = int(self.reconstruction_offset_x.text())
-        offset_y = int(self.reconstruction_offset_y.text())
-        eta = float(self.reconstruction_eta_txt.text())
-
-        assert self.frames.shape[0] == 7
-        frames = self.frames[:, offset_y:offset_y + N, offset_x:offset_x + N]
-
-        self.p.N = N
-        self.p.eta = eta
-        self.p.calibrate(frames)
-
-        self.carrier_plot.plot.fig.clear()
-        axs = self.carrier_plot.plot.fig.subplots(2, 3)
-        ims = []
-        for i in range(3):
-            ims.append(axs[0, i].imshow(self.p.carrier_debug_img[i]))
-        for i in range(3):
-            ims.append(axs[1, i].imshow(self.p.carrier_debug_zoom_img[i]))
-        self.carrier_plot.connect_clim(ims)
-        self.carrier_plot.plot.draw()
-
+        self.sim_imaging.calibrate()
+        self.lmi_imaging.calibrate()
         self.reconstruct_image_nocal()
 
     def reconstruct_image_nocal(self):
-        # TODO this breaks if params changed inbetween
-        N = int(self.reconstruction_size_txt.text())
-        offset_x = int(self.reconstruction_offset_x.text())
-        offset_y = int(self.reconstruction_offset_y.text())
-
-        assert self.frames.shape[0] == 7
-        frames = self.frames[:, offset_y:offset_y + N, offset_x:offset_x + N]
-
-        self.p.use_filter = self.use_filter_chb.isChecked()
-        reconstruct = self.p.reconstruct_fftw(frames)
+        sim_image, sim_wf = self.sim_imaging.reconstruct()
+        lmi_image, lmi_wf = self.lmi_imaging.reconstruct()
 
         self.recon_plot.plot.fig.clear()
-        ax1, ax2 = self.recon_plot.plot.fig.subplots(1, 2, sharex=True, sharey=True)
-        im1 = ax1.imshow(reconstruct / 4)
-        im2 = ax2.imshow(scipy.ndimage.zoom(np.sum(frames, axis=0), (2, 2), order=1))
-        self.recon_plot.connect_clim(im1, 0)
-        self.recon_plot.connect_clim(im2, 1)
+        ax1, ax2, ax3 = self.recon_plot.plot.fig.subplots(1, 3, sharex=True, sharey=True)
+
+        if sim_image is not None:
+            im1 = ax1.imshow(sim_image)
+            ax1.set_title("Hex SIM")
+            self.recon_plot.connect_clim(im1, 0)
+        if lmi_image is not None:
+            im2 = ax2.imshow(lmi_image)
+            ax2.set_title("LMI")
+            self.recon_plot.connect_clim(im2, 1)
+        if self.wf_image is not None:
+            wf_upres = scipy.ndimage.zoom(self.wf_image, (2, 2), order=2)
+            ax3.set_title("WF")
+            im3 = ax3.imshow(wf_upres)
+            self.recon_plot.connect_clim(im3, 2)
+        elif sim_wf is not None:
+            ax3.set_title("WF (sum of SIM images)")
+            im3 = ax3.imshow(sim_wf)
+            self.recon_plot.connect_clim(im3, 2)
+        elif lmi_wf is not None:
+            ax3.set_title("WF (sum of LMI images)")
+            im3 = ax3.imshow(lmi_wf)
+            self.recon_plot.connect_clim(im3, 2)
+
         self.recon_plot.plot.draw()
 
     def project_pattern_loop(self):
         self.create_patterns()
         run_event = threading.Event()
         run_event.set()
-        thread = threading.Thread(target = self.sim_system.project_patterns_looping, args = (self.pattern_deg, self.pattern_rate_Hz, run_event))
+        thread = threading.Thread(target = self.sim_system.project_patterns_looping, args = (self.sim_imaging.pattern_deg, self.sim_imaging.pattern_rate_Hz, run_event))
         thread.start()
         msgBox = QtWidgets.QMessageBox()
         msgBox.setText("Projecting pattern. Close dialog to stop")
         msgBox.exec()
         run_event.clear()
         thread.join()
-    
+
     def project_single_pattern_loop(self):
         self.create_patterns()
         run_event = threading.Event()
         run_event.set()
-        thread = threading.Thread(target = self.sim_system.project_patterns_looping, args = (self.pattern_deg[0, :, :], self.pattern_rate_Hz, run_event))
+        thread = threading.Thread(target = self.sim_system.project_patterns_looping, args = (self.sim_imaging.pattern_deg[0, :, :], self.sim_imaging.pattern_rate_Hz, run_event))
         thread.start()
         msgBox = QtWidgets.QMessageBox()
         msgBox.setText("Projecting single pattern. Close dialog to stop")
         msgBox.exec()
         run_event.clear()
         thread.join()
-        
+
     def project_zero_pattern_loop(self):
         pattern_deg = np.zeros((1, 500, 2))
         run_event = threading.Event()
@@ -471,7 +272,7 @@ class MainWindow(QtWidgets.QMainWindow):
         msgBox.exec()
         run_event.clear()
         thread.join()
-    
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])
