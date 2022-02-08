@@ -7,6 +7,8 @@ import hex_grid
 import lmi_pattern
 from hexSimProcessor import HexSimProcessor
 import scipy
+import tifffile
+import os
 
 class ImagingMethod:
     def __init__(self):
@@ -25,6 +27,12 @@ class ImagingMethod:
         pass
 
     def reconstruct(self):
+        pass
+
+    def save_images(self, folder):
+        pass
+
+    def load_images(self, folder):
         pass
 
 
@@ -221,6 +229,17 @@ class SIMImaging(ImagingMethod):
 
         return reconstruct, sumall
 
+    def save_images(self, folder):
+        if not self.sim_enabled_chb.isChecked():
+            return
+        tifffile.imwrite(os.path.join(folder, "sim.tiff"), self.frames)
+
+    def load_images(self, folder):
+        if not self.sim_enabled_chb.isChecked():
+            return
+        self.frames = tifffile.imread(os.path.join(folder, "sim.tiff"))
+        self.plot_images()
+
 
 class LMIImaging(ImagingMethod):
     def __init__(self):
@@ -351,3 +370,14 @@ class LMIImaging(ImagingMethod):
         self.recon_plot.plot.draw()
 
         return reconstruct, sumall
+
+    def save_images(self, folder):
+        if not self.lmi_enabled_chb.isChecked():
+            return
+        tifffile.imwrite(os.path.join(folder, "lmi.tiff"), self.frames)
+
+    def load_images(self, folder):
+        if not self.lmi_enabled_chb.isChecked():
+            return
+        self.frames = tifffile.imread(os.path.join(folder, "lmi.tiff"))
+        self.plot_images()

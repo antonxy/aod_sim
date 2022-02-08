@@ -4,11 +4,11 @@ import numpy as np
 import time
 import scipy
 import threading
-import tifffile
 from pathlib import Path
 from detect_orientation_dialog import DetectOrientationDialog
 import subprocess
 import json
+import os
 
 from widgets import PlotWidget
 
@@ -47,6 +47,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.pattern_delay_txt = QtWidgets.QLineEdit("0.0")
         layout.addRow("Pattern delay [sec]", self.pattern_delay_txt)
+
+        self.output_folder_txt = QtWidgets.QLineEdit("./recordings")
+        layout.addRow("Output folder", self.output_folder_txt)
+
+        self.recording_name_txt = QtWidgets.QLineEdit("")
+        layout.addRow("Recording name", self.recording_name_txt)
 
         self.image_notes_txt = QtWidgets.QLineEdit("")
         layout.addRow("Recording notes", self.image_notes_txt)
@@ -182,24 +188,26 @@ class MainWindow(QtWidgets.QMainWindow):
             self.orientation_deg_txt.setText(str(orientation))
 
     def load_images(self):
+        folder = self.output_folder_txt.text()
         file_dialog = QtWidgets.QFileDialog()
-        filename = file_dialog.getOpenFileName(self, "Load tiff file", "", "TIFF (*.tiff);; TIF (*.tif)")[0]
-        if filename != "":
-            self.frames = tifffile.imread(filename)
-            self.plot_images()
+        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Load recording dir", folder)
+        if folder is not None and folder != "":
+            self.sim_imaging.load_images(folder)
+            self.lmi_imaging.load_images(folder)
 
     def save_images(self):
-        file_dialog = QtWidgets.QFileDialog()
-        filename = file_dialog.getSaveFileName(self, "Save tiff file", "", "TIFF (*.tiff);; TIF (*.tif)")[0]
-        if filename != "":
-            path = Path(filename)
-            if path.suffix == "":
-                filename += ".tiff"
-            tifffile.imwrite(filename, self.frames)
+        folder = self.output_folder_txt.text()
+        rec_name = self.recording_name_txt.text()
+        if folder != "" and rec_name != "":
+            rec_folder = os.path.join(folder, rec_name)
 
-            self.metadata["recording_notes"] = self.image_notes_txt.text()
-            with open(f"{Path.joinpath(path.parent, path.stem)}_metadata.json", "w") as f:
-                json.dump(self.metadata, f)
+            if not os.path.exists(rec_folder):
+                os.makedirs(rec_folder)
+                self.sim_imaging.save_images(rec_folder)
+                self.lmi_imaging.save_images(rec_folder)
+                QtWidgets.QMessageBox.information(self, "Success", "Saved successfully")
+            else:
+                QtWidgets.QMessageBox.critical(self, "Error", "Directory already exists, not saving")
 
     def reconstruct_image(self):
         self.sim_imaging.calibrate()
