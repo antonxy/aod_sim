@@ -7,7 +7,6 @@ import threading
 from pathlib import Path
 from detect_orientation_dialog import DetectOrientationDialog
 import subprocess
-import json
 import os
 
 from widgets import PlotWidget
@@ -161,13 +160,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.sim_system.disconnect()
 
     def parse_global_params(self):
-        global_params = {
+        return {
             "grating_distance_x": float(self.grating_distance_x_txt.text()),
             "grating_distance_y": float(self.grating_distance_y_txt.text()),
             "orientation_deg": float(self.orientation_deg_txt.text()),
             "pattern_delay_sec": float(self.pattern_delay_txt.text()),
+            "recording_notes": self.image_notes_txt.text(),
+            "software_version": get_git_revision_short_hash(),
         }
-        return global_params
 
     def create_patterns(self):
         self.sim_imaging.update_patterns(global_params = self.parse_global_params())

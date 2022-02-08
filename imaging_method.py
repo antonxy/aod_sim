@@ -9,6 +9,7 @@ from hexSimProcessor import HexSimProcessor
 import scipy
 import tifffile
 import os
+import json
 
 class ImagingMethod:
     def __init__(self):
@@ -16,6 +17,9 @@ class ImagingMethod:
         self.reconstruction_parameters_widget = None
         self.patterns_widget = None
         self.debug_tabs = []  # list of tuples ("name", widget)
+
+    def parse_parameters(self):
+        pass
 
     def update_patterns(self, global_params):
         pass
@@ -114,16 +118,23 @@ class SIMImaging(ImagingMethod):
         self.p = HexSimProcessor()
         self.p.debug = False
 
+    def parse_parameters(self):
+        return {
+            "desired_distance": float(self.desired_distance_txt.text()),
+            "pattern_rate_Hz": float(self.pattern_hz_txt.text()),
+        }
+
     def update_patterns(self, global_params):
         if not self.sim_enabled_chb.isChecked():
             return
+        params = self.parse_parameters() | global_params
 
-        desired_distance = float(self.desired_distance_txt.text())
-        grating_distance_x = global_params['grating_distance_x']
+        desired_distance = params['desired_distance']
+        grating_distance_x = params['grating_distance_x']
         steps_x = round(grating_distance_x / desired_distance)
         distance_x = grating_distance_x / steps_x
 
-        grating_distance_y = global_params['grating_distance_y']
+        grating_distance_y = params['grating_distance_y']
         desired_distance_y = np.sin(np.deg2rad(60)) * distance_x * 2
         steps_y = round(grating_distance_y / desired_distance_y)
         distance_y = grating_distance_y / steps_y
@@ -135,8 +146,8 @@ class SIMImaging(ImagingMethod):
         self.steps_y_lbl.setText(str(steps_y))
         self.dot_distance_x_lbl.setText(str(distance_x))
 
-        orientation_deg = global_params['orientation_deg']
-        self.pattern_rate_Hz = float(self.pattern_hz_txt.text())
+        orientation_deg = params['orientation_deg']
+        self.pattern_rate_Hz = params['pattern_rate_Hz']
 
         pattern_deg = hex_grid.projection_hex_pattern_deg(distance_x, steps_x, steps_y, orientation_rad = np.deg2rad(orientation_deg), aspect_ratio=aspect)
 
@@ -153,13 +164,13 @@ class SIMImaging(ImagingMethod):
         self.pattern_plot.draw()
 
         self.pattern_deg = pattern_deg
-        self.global_params = global_params
+        self.params = params
 
 
     def take_images(self, system):
         if not self.sim_enabled_chb.isChecked():
             return
-        self.frames = system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz, self.global_params['pattern_delay_sec'])
+        self.frames = system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz, self.params['pattern_delay_sec'])
         self.plot_images()
 
     def plot_images(self):
@@ -233,6 +244,8 @@ class SIMImaging(ImagingMethod):
         if not self.sim_enabled_chb.isChecked():
             return
         tifffile.imwrite(os.path.join(folder, "sim.tiff"), self.frames)
+        with open(os.path.join(folder, "sim_metadata.json"), 'w') as f:
+            json.dump(self.params, f)
 
     def load_images(self, folder):
         if not self.sim_enabled_chb.isChecked():
@@ -300,21 +313,32 @@ class LMIImaging(ImagingMethod):
             ('LMI Reconstructed Image', self.recon_plot),
         ]
 
+    def parse_parameters(self):
+        return {
+            "steps_x": int(self.steps_x_txt.text()),
+            "steps_y": int(self.steps_y_txt.text()),
+            "multiscan_x": int(self.multiscan_x_txt.text()),
+            "multiscan_y": int(self.multiscan_y_txt.text()),
+            "pattern_rate_Hz": float(self.pattern_hz_txt.text()),
+        }
+
     def update_patterns(self, global_params):
         if not self.lmi_enabled_chb.isChecked():
             return
 
-        grating_distance_x = global_params['grating_distance_x']
-        grating_distance_y = global_params['grating_distance_y']
-        orientation_deg = global_params['orientation_deg']
+        params = self.parse_parameters() | global_params
 
-        steps_x = int(self.steps_x_txt.text())
-        steps_y = int(self.steps_y_txt.text())
+        grating_distance_x = params['grating_distance_x']
+        grating_distance_y = params['grating_distance_y']
+        orientation_deg = params['orientation_deg']
 
-        multiscan_x = int(self.multiscan_x_txt.text())
-        multiscan_y = int(self.multiscan_y_txt.text())
+        steps_x = params['steps_x']
+        steps_y = params['steps_y']
 
-        self.pattern_rate_Hz = float(self.pattern_hz_txt.text())
+        multiscan_x = params['multiscan_x']
+        multiscan_y = params['multiscan_y']
+
+        self.pattern_rate_Hz = params['pattern_rate_Hz']
 
         pattern_deg = lmi_pattern.lmi_pattern_deg(steps_x, steps_y, multiscan_x, multiscan_y, grating_distance_x, grating_distance_y, orientation_rad = np.deg2rad(orientation_deg))
 
@@ -336,13 +360,13 @@ class LMIImaging(ImagingMethod):
         self.pattern_plot.draw()
 
         self.pattern_deg = pattern_deg
-        self.global_params = global_params
+        self.params = params
 
 
     def take_images(self, system):
         if not self.lmi_enabled_chb.isChecked():
             return
-        self.frames = system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz, self.global_params['pattern_delay_sec'])
+        self.frames = system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz, self.params['pattern_delay_sec'])
         self.plot_images()
 
     def plot_images(self):
@@ -375,6 +399,8 @@ class LMIImaging(ImagingMethod):
         if not self.lmi_enabled_chb.isChecked():
             return
         tifffile.imwrite(os.path.join(folder, "lmi.tiff"), self.frames)
+        with open(os.path.join(folder, "lmi_metadata.json"), 'w') as f:
+            json.dump(self.params, f)
 
     def load_images(self, folder):
         if not self.lmi_enabled_chb.isChecked():
