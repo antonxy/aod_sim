@@ -54,6 +54,7 @@ def projection_hex_pattern_deg(step_size_deg, steps_x, steps_y, orientation_rad=
     # Shift by 1/7 period
     shift_pos = hex_grid_positions(step_size_deg, 1, 2)
     shift_pos = shift_pos[3, :]
+    shift_pos[1] *= y_tweak
 
     shifts = shift_pos[np.newaxis, :] * (np.arange(7) / 7)[:, np.newaxis]
 
