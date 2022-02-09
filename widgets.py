@@ -143,6 +143,7 @@ class ImageView(QtWidgets.QGraphicsView):
             qimg = QtGui.QImage(a, a.shape[1], a.shape[0], QtGui.QImage.Format_Indexed8)
             qimg.setColorTable(self.color_palette)
         elif len(a.shape) == 3:
+            assert a.shape[2] == 3
             qimg = QtGui.QImage(a, a.shape[1], a.shape[0], QtGui.QImage.Format_RGB888)
         self.set_pixmap(QtGui.QPixmap.fromImage(qimg))
 

@@ -6,6 +6,7 @@ import scipy
 import threading
 from pathlib import Path
 from detect_orientation_dialog import DetectOrientationDialog
+from measure_grating import MeasureGratingDialog
 import subprocess
 import os
 
@@ -99,6 +100,10 @@ class MainWindow(QtWidgets.QMainWindow):
         measure_orientation_action.triggered.connect(self.measure_orientation)
         patternMenu.addAction(measure_orientation_action)
 
+        measure_grating_action = QtWidgets.QAction("Measure &Grating", self)
+        measure_grating_action.triggered.connect(self.measure_grating)
+        patternMenu.addAction(measure_grating_action)
+
         imageMenu = self.menuBar().addMenu("&Image")
         take_images_action = QtWidgets.QAction("Take &Images", self)
         take_images_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_Return))
@@ -186,6 +191,13 @@ class MainWindow(QtWidgets.QMainWindow):
         orientation = DetectOrientationDialog.run_calibration_dialog(frames[0], self)
         if orientation is not None:
             self.orientation_deg_txt.setText(str(orientation))
+
+    def measure_grating(self):
+        params = MeasureGratingDialog.run_dialog(self.sim_system, self.parse_global_params(), self)
+        if params is not None:
+            self.orientation_deg_txt.setText(str(params['orientation_deg']))
+            self.grating_distance_x_txt.setText(str(params['grating_distance_x']))
+            self.grating_distance_y_txt.setText(str(params['grating_distance_y']))
 
     def load_images(self):
         folder = self.output_folder_txt.text()
