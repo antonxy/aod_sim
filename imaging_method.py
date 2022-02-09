@@ -106,12 +106,14 @@ class SIMImaging(ImagingMethod):
         self.image_plot = PlotWidget()
         self.fft_plot = PlotWidget()
         self.carrier_plot = PlotWidget()
+        self.bands_plot = PlotWidget()
         self.recon_plot = PlotWidget(None, num_clim = 2)
 
         self.debug_tabs = [
             ('Recorded Images', self.image_plot),
             ('FFT', self.fft_plot),
             ('Carrier', self.carrier_plot),
+            ('Bands', self.bands_plot),
             ('Reconstructed Image', self.recon_plot),
         ]
 
@@ -215,9 +217,19 @@ class SIMImaging(ImagingMethod):
         self.carrier_plot.connect_clim(ims)
         self.carrier_plot.plot.draw()
 
+        self.bands_plot.plot.fig.clear()
+        axs = self.bands_plot.plot.fig.subplots(2, 4)
+        ims = []
+        for i in range(4):
+            ims.append(axs[0, i].imshow(self.p.bands_debug_img[i].real))
+        for i in range(4):
+            ims.append(axs[1, i].imshow(self.p.bands_debug_img[i].imag))
+        self.bands_plot.connect_clim(ims)
+        self.bands_plot.plot.draw()
+
     def reconstruct(self):
         if not self.sim_enabled_chb.isChecked():
-            return
+            return None, None
         # TODO this breaks if params changed inbetween
         N = int(self.reconstruction_size_txt.text())
         offset_x = int(self.reconstruction_offset_x.text())
@@ -380,7 +392,7 @@ class LMIImaging(ImagingMethod):
 
     def reconstruct(self):
         if not self.lmi_enabled_chb.isChecked():
-            return
+            return None, None
         reconstruct = np.max(scipy.ndimage.zoom(self.frames, (1, 2, 2), order=2), axis=0)
         #reconstruct = np.max(self.frames, axis=0)
         sumall = scipy.ndimage.zoom(np.sum(self.frames, axis=0), (2, 2), order=2)

@@ -33,6 +33,7 @@ class HexSimProcessor:
         self._lastN = 0
         self.carrier_debug_img = [None] * 3
         self.carrier_debug_zoom_img = [None] * 3
+        self.bands_debug_img = [None] * 4
 
     def _allocate_arrays(self):
         ''' define grids '''
@@ -75,6 +76,9 @@ class HexSimProcessor:
         for k in range(0, 4):
             for l in range(0, 7):
                 sum_prepared_comp[k, :, :] = sum_prepared_comp[k, :, :] + img[l, :, :] * M[k, l]
+
+        for i in range(4):
+            self.bands_debug_img[i] = sum_prepared_comp[i, :, :]
 
         # minimum search radius in k-space
         mask1 = (kr > 1.8 * self.eta)
