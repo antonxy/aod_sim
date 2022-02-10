@@ -129,7 +129,7 @@ class SIMImaging(ImagingMethod):
     def update_patterns(self, global_params):
         if not self.sim_enabled_chb.isChecked():
             return
-        params = self.parse_parameters() | global_params
+        params = {**self.parse_parameters(), **global_params}
 
         desired_distance = params['desired_distance']
         grating_distance_x = params['grating_distance_x']
@@ -338,7 +338,7 @@ class LMIImaging(ImagingMethod):
         if not self.lmi_enabled_chb.isChecked():
             return
 
-        params = self.parse_parameters() | global_params
+        params = {**self.parse_parameters(), **global_params}
 
         grating_distance_x = params['grating_distance_x']
         grating_distance_y = params['grating_distance_y']
@@ -393,7 +393,7 @@ class LMIImaging(ImagingMethod):
     def reconstruct(self):
         if not self.lmi_enabled_chb.isChecked():
             return None, None
-        reconstruct = np.max(scipy.ndimage.zoom(self.frames, (1, 2, 2), order=2), axis=0)
+        reconstruct = scipy.ndimage.zoom(np.max(self.frames, axis=0), (2, 2), order=2)
         #reconstruct = np.max(self.frames, axis=0)
         sumall = scipy.ndimage.zoom(np.sum(self.frames, axis=0), (2, 2), order=2)
 

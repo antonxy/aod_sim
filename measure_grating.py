@@ -26,7 +26,7 @@ class MeasureGratingDialog(QtWidgets.QDialog):
         lay.addWidget(toolbar)
         lay.addWidget(self.quality_plot)
         w.setLayout(lay)
-        layout.addWidget(w)
+        #layout.addWidget(w)
 
 
         form_layout = QtWidgets.QFormLayout()
@@ -41,6 +41,7 @@ class MeasureGratingDialog(QtWidgets.QDialog):
         self.grating_distance_y_txt = QtWidgets.QLineEdit(str(params['grating_distance_y']))
         self.grating_distance_y_txt.returnPressed.connect(self.take_image)
         form_layout.addRow("Grating dot distance y [deg]", self.grating_distance_y_txt)
+        layout.addLayout(form_layout)
 
         hlayout = QtWidgets.QHBoxLayout()
         switch_button = QtWidgets.QPushButton('Switch image')
@@ -82,7 +83,7 @@ class MeasureGratingDialog(QtWidgets.QDialog):
         grating_distance_y = params["grating_distance_y"]
         orientation_deg = params["orientation_deg"]
 
-        grating_repeats = 5
+        grating_repeats = 2
         grating_dots_x = np.linspace(-grating_distance_x * (grating_repeats - 1) / 2, grating_distance_x * (grating_repeats - 1) / 2, grating_repeats)
         grating_dots_y = np.linspace(-grating_distance_y * (grating_repeats - 1) / 2, grating_distance_y * (grating_repeats - 1) / 2, grating_repeats)
         dots_xx, dots_yy = np.meshgrid(grating_dots_x, grating_dots_y)
@@ -111,8 +112,11 @@ class MeasureGratingDialog(QtWidgets.QDialog):
         #R = np.array(((c, -s), (s, c)))
         #pattern_deg = np.dot(pattern_deg, R.T)
 
-        #pattern_deg = np.repeat(pattern_deg, 500, axis=1)
+        
         pattern_deg = self.grating_pattern()[np.newaxis, :, :]
+        
+        pattern_deg = np.repeat(pattern_deg, 100, axis=1)
+        
 
         frames = self.sim_system.project_patterns_and_take_images(pattern_deg, 10000, delay_sec = 0.0)
         self.adj_frame = frames[0]
@@ -137,9 +141,9 @@ class MeasureGratingDialog(QtWidgets.QDialog):
         self.frame_u8 = adj_clip
         self.image_widget.set_numpy_array(self.frame_u8)
 
-        self.quality_plot.axes.clear()
-        self.quality_plot.axes.plot(self.quality_hist)
-        self.quality_plot.draw()
+        #self.quality_plot.axes.clear()
+        #self.quality_plot.axes.plot(self.quality_hist)
+        #self.quality_plot.draw()
 
     @staticmethod
     def run_dialog(sim_system, params, parent=None):
