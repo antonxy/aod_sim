@@ -9,6 +9,7 @@ from detect_orientation_dialog import DetectOrientationDialog
 from measure_grating import MeasureGratingDialog
 import subprocess
 import os
+from datetime import datetime
 
 from widgets import PlotWidget
 
@@ -172,6 +173,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "pattern_delay_sec": float(self.pattern_delay_txt.text()),
             "recording_notes": self.image_notes_txt.text(),
             "software_version": get_git_revision_short_hash(),
+            "date_time": datetime.now().astimezone().isoformat(),
         }
 
     def create_patterns(self):
