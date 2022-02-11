@@ -12,11 +12,15 @@ import os
 import json
 
 class ImagingMethod:
-    def __init__(self):
+    def __init__(self, method_name):
+        self.method_name = method_name
         self.parameters_widget = None
         self.reconstruction_parameters_widget = None
         self.patterns_widget = None
         self.debug_tabs = []  # list of tuples ("name", widget)
+        self.frames = None
+        self.reconstruction = None
+        self.params = None
 
     def parse_parameters(self):
         pass
@@ -39,9 +43,22 @@ class ImagingMethod:
     def load_images(self, folder):
         pass
 
+    def save_images(self, folder):
+        tifffile.imwrite(os.path.join(folder, f"{self.method_name}.tiff"), self.frames)
+        if self.reconstruction is not None:
+            tifffile.imwrite(os.path.join(folder, f"{self.method_name}_reconstruction.tiff"), self.reconstruction)
+        with open(os.path.join(folder, f"{self.method_name}_metadata.json"), 'w') as f:
+            json.dump(self.params, f)
+
+    def load_images(self, folder):
+        self.frames = tifffile.imread(os.path.join(folder, "{self.method_name}.tiff"))
+        self.reconstruction = None
+        self.plot_images()
+
 
 class SIMImaging(ImagingMethod):
     def __init__(self):
+        super().__init__("sim")
         sim_group = QtWidgets.QGroupBox("SIM")
         layout = QtWidgets.QFormLayout()
 
@@ -120,6 +137,9 @@ class SIMImaging(ImagingMethod):
         self.p = HexSimProcessor()
         self.p.debug = False
 
+        self.frames = None
+        self.reconstruction = None
+
     def parse_parameters(self):
         return {
             "desired_distance": float(self.desired_distance_txt.text()),
@@ -173,6 +193,7 @@ class SIMImaging(ImagingMethod):
         if not self.sim_enabled_chb.isChecked():
             return
         self.frames = system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz, self.params['pattern_delay_sec'])
+        self.reconstruction = None
         self.plot_images()
 
     def plot_images(self):
@@ -250,24 +271,22 @@ class SIMImaging(ImagingMethod):
         self.recon_plot.connect_clim(im2, 1)
         self.recon_plot.plot.draw()
 
+        self.reconstruction = reconstruct
+
         return reconstruct, sumall
 
     def save_images(self, folder):
-        if not self.sim_enabled_chb.isChecked():
-            return
-        tifffile.imwrite(os.path.join(folder, "sim.tiff"), self.frames)
-        with open(os.path.join(folder, "sim_metadata.json"), 'w') as f:
-            json.dump(self.params, f)
+        if self.sim_enabled_chb.isChecked():
+            super().save_images(folder)
 
     def load_images(self, folder):
         if not self.sim_enabled_chb.isChecked():
-            return
-        self.frames = tifffile.imread(os.path.join(folder, "sim.tiff"))
-        self.plot_images()
+            super().load_images(folder)
 
 
 class LMIImaging(ImagingMethod):
     def __init__(self):
+        super().__init__("lmi")
         lmi_group = QtWidgets.QGroupBox("LMI")
         layout = QtWidgets.QFormLayout()
 
@@ -379,6 +398,7 @@ class LMIImaging(ImagingMethod):
         if not self.lmi_enabled_chb.isChecked():
             return
         self.frames = system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz, self.params['pattern_delay_sec'])
+        self.reconstruction = None
         self.plot_images()
 
     def plot_images(self):
@@ -393,9 +413,9 @@ class LMIImaging(ImagingMethod):
     def reconstruct(self):
         if not self.lmi_enabled_chb.isChecked():
             return None, None
-        reconstruct = scipy.ndimage.zoom(np.max(self.frames, axis=0), (2, 2), order=2)
+        reconstruct = np.max(self.frames, axis=0)
         #reconstruct = np.max(self.frames, axis=0)
-        sumall = scipy.ndimage.zoom(np.sum(self.frames, axis=0), (2, 2), order=2)
+        sumall = np.sum(self.frames, axis=0)
 
         self.recon_plot.plot.fig.clear()
         ax1, ax2 = self.recon_plot.plot.fig.subplots(1, 2, sharex=True, sharey=True)
@@ -405,17 +425,14 @@ class LMIImaging(ImagingMethod):
         self.recon_plot.connect_clim(im2, 1)
         self.recon_plot.plot.draw()
 
+        self.reconstruction = reconstruct
+
         return reconstruct, sumall
 
     def save_images(self, folder):
-        if not self.lmi_enabled_chb.isChecked():
-            return
-        tifffile.imwrite(os.path.join(folder, "lmi.tiff"), self.frames)
-        with open(os.path.join(folder, "lmi_metadata.json"), 'w') as f:
-            json.dump(self.params, f)
+        if self.lmi_enabled_chb.isChecked():
+            super().save_images(folder)
 
     def load_images(self, folder):
         if not self.lmi_enabled_chb.isChecked():
-            return
-        self.frames = tifffile.imread(os.path.join(folder, "lmi.tiff"))
-        self.plot_images()
+            super().load_images(folder)

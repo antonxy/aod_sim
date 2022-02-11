@@ -240,6 +240,7 @@ class MainWindow(QtWidgets.QMainWindow):
             ax1.set_title("Hex SIM")
             self.recon_plot.connect_clim(im1, 0)
         if lmi_image is not None:
+            lmi_image = scipy.ndimage.zoom(lmi_image, (2, 2), order=2)
             im2 = ax2.imshow(lmi_image)
             ax2.set_title("LMI")
             self.recon_plot.connect_clim(im2, 1)
@@ -254,6 +255,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.recon_plot.connect_clim(im3, 2)
         elif lmi_wf is not None:
             ax3.set_title("WF (sum of LMI images)")
+            lmi_wf = scipy.ndimage.zoom(lmi_wf, (2, 2), order=2)
             im3 = ax3.imshow(lmi_wf)
             self.recon_plot.connect_clim(im3, 2)
 
