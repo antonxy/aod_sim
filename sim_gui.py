@@ -87,6 +87,7 @@ class MainWindow(QtWidgets.QMainWindow):
         patternMenu.addAction(update_pattern_action)
 
         project_zero_pattern_loop_action = QtWidgets.QAction("Project &Zero Pattern", self)
+        project_zero_pattern_loop_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_L))
         project_zero_pattern_loop_action.triggered.connect(self.project_zero_pattern_loop)
         patternMenu.addAction(project_zero_pattern_loop_action)
 
@@ -111,6 +112,11 @@ class MainWindow(QtWidgets.QMainWindow):
         take_images_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_Return))
         take_images_action.triggered.connect(self.take_images)
         imageMenu.addAction(take_images_action)
+        
+        record_slide_action = QtWidgets.QAction("Take Slide Image", self)
+        record_slide_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_N))
+        record_slide_action.triggered.connect(self.record_slide)
+        imageMenu.addAction(record_slide_action)
 
         load_images_action = QtWidgets.QAction("&Open Images", self)
         load_images_action.setShortcut(QtGui.QKeySequence.Open)
@@ -215,6 +221,11 @@ class MainWindow(QtWidgets.QMainWindow):
              lambda x: f"{str(int(x.group())+1).zfill(len(x.group()))}",
              self.recording_name_txt.text())
         self.recording_name_txt.setText(res)
+        
+    def record_slide(self):
+        self.project_zero_pattern_loop()
+        self.take_images()
+        self.reconstruct_image()
 
     def save_images(self):
         folder = self.output_folder_txt.text()
