@@ -10,6 +10,7 @@ from measure_grating import MeasureGratingDialog
 import subprocess
 import os
 from datetime import datetime
+import re
 
 from widgets import PlotWidget
 
@@ -209,6 +210,12 @@ class MainWindow(QtWidgets.QMainWindow):
             self.sim_imaging.load_images(folder)
             self.lmi_imaging.load_images(folder)
 
+    def increment_filename(self):
+        res = re.sub(r'[0-9]+$',
+             lambda x: f"{str(int(x.group())+1).zfill(len(x.group()))}",
+             self.recording_name_txt.text())
+        self.recording_name_txt.setText(res)
+
     def save_images(self):
         folder = self.output_folder_txt.text()
         rec_name = self.recording_name_txt.text()
@@ -220,6 +227,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.sim_imaging.save_images(rec_folder)
                 self.lmi_imaging.save_images(rec_folder)
                 QtWidgets.QMessageBox.information(self, "Success", "Saved successfully")
+                self.increment_filename()
             else:
                 QtWidgets.QMessageBox.critical(self, "Error", "Directory already exists, not saving")
 
