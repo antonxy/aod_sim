@@ -75,10 +75,14 @@ class SIMHardwareSystem:
         self.camera.record(number_of_images=patterns_deg.shape[0], mode='sequence non blocking')
 
         nidaq_pattern.project_patterns(patterns_deg_delay, pattern_rate_Hz)
+        t_start = time.time()
         while True:
             running = self.camera.rec.get_status()['is running']
             if not running:
                 break
+            if (time.time() - t_start) - 2 > exposure_time_sec * patterns_deg.shape[0]:
+                self.camera.stop()
+                raise RuntimeError("Camera took too long, probably trigger was lost")
             time.sleep(0.001)
 
         images, metadatas = self.camera.images()
