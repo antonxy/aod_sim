@@ -40,7 +40,8 @@ class HexSimProcessor:
         self._dx = self.pixelsize / self.magnification  # Sampling in image plane
         self._res = self.wavelength / (2 * self.NA)
         self._oversampling = self._res / self._dx
-        self._dk = self._oversampling / (self.N / 2)  # Sampling in frequency plane
+        self._dk = self._oversampling / (self.N / 2)  # Sampling in frequency plane. This is unitless, not sure what is means exactly
+        self._k_to_cycles_per_um = self.NA / self.wavelength
         self._kx = np.arange(-self._dk * self.N / 2, self._dk * self.N / 2, self._dk, dtype=np.single)
         [self._kx, self._ky] = np.meshgrid(self._kx, self._kx)
         self._dx2 = self._dx / 2
@@ -60,8 +61,8 @@ class HexSimProcessor:
         self._lastN = self.N
 
     def calibrate(self, img):
-        if self.N != self._lastN:
-            self._allocate_arrays()
+        # Always allocate, since not just N can change and thus res, kx, ... have to be adjusted
+        self._allocate_arrays()
 
         kr = sqrt(self._kx ** 2 + self._ky ** 2, dtype=np.single)
         kxbig = np.arange(-self._dk * self.N, self._dk * self.N, self._dk, dtype=np.single)
@@ -98,7 +99,9 @@ class HexSimProcessor:
             print(f'p  = {p[0]}, {p[1]}, {p[2]}')
             print(f'a  = {ampl[0]}, {ampl[1]}, {ampl[2]}')
 
-        ph = np.single(2 * pi * self.NA / self.wavelength)
+        ph = np.single(2 * pi * self.NA / self.wavelength)  # converts k to rad per um
+
+        self.mean_carrier_freq = np.mean(np.sqrt(ckx ** 2 + cky ** 2)) * ph  # [rad/um]
 
         xx = np.arange(-self._dx2 * self.N, self._dx2 * self.N, self._dx2, dtype=np.single)
         yy = xx
@@ -343,6 +346,7 @@ class HexSimProcessor:
         return atff.reshape(kr.shape)
 
     def _tf(self, kr):
+        # TODO according to wikipedia it should be 2/pi. Then it would also be 1 at freq 0. Why is it 1/pi here?
         otf = (1 / pi * (arccos(kr / 2) - kr / 2 * sqrt(1 - kr ** 2 / 4)))
         return otf
 
