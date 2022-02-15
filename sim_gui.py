@@ -200,7 +200,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.metadata = None
 
         if args.folder:
-            self.load_images(args.folder)
+            self.load_images(folder = args.folder)
 
     def connect_camera(self):
         self.sim_system.connect()
@@ -250,8 +250,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.grating_distance_x_txt.setText(str(params['grating_distance_x']))
             self.grating_distance_y_txt.setText(str(params['grating_distance_y']))
 
-    def load_images(self, folder = None):
+    def load_images(self, *args, folder = None):
         if folder is None:
+            folder = self.output_folder_txt.text()
             file_dialog = QtWidgets.QFileDialog()
             folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Load recording dir", folder)
         if folder is not None and folder != "":
