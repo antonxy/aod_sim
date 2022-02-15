@@ -51,7 +51,7 @@ class ImagingMethod:
             json.dump(self.params, f)
 
     def load_images(self, folder):
-        self.frames = tifffile.imread(os.path.join(folder, "{self.method_name}.tiff"))
+        self.frames = tifffile.imread(os.path.join(folder, f"{self.method_name}.tiff"))
         self.reconstruction = None
         self.plot_images()
 
@@ -280,7 +280,7 @@ class SIMImaging(ImagingMethod):
             super().save_images(folder)
 
     def load_images(self, folder):
-        if not self.sim_enabled_chb.isChecked():
+        if self.sim_enabled_chb.isChecked():
             super().load_images(folder)
 
 
@@ -434,5 +434,5 @@ class LMIImaging(ImagingMethod):
             super().save_images(folder)
 
     def load_images(self, folder):
-        if not self.lmi_enabled_chb.isChecked():
+        if self.lmi_enabled_chb.isChecked():
             super().load_images(folder)
