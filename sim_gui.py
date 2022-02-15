@@ -11,14 +11,19 @@ import subprocess
 import os
 from datetime import datetime
 import re
+import argparse
 
 from widgets import PlotWidget
 
 import sys
 import imaging_method
 
-simulate = len(sys.argv) > 1 and sys.argv[1] == 'sim'
-if simulate:
+parser = argparse.ArgumentParser()
+parser.add_argument('-f', '--folder')
+parser.add_argument('--simulate', action='store_true')
+args = parser.parse_args()
+
+if args.simulate:
     from sim_simulated_system import SIMSimulatedSystem as SIMSystem
 else:
     from sim_hardware_system import SIMHardwareSystem as SIMSystem
@@ -112,7 +117,7 @@ class MainWindow(QtWidgets.QMainWindow):
         take_images_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_Return))
         take_images_action.triggered.connect(self.take_images)
         imageMenu.addAction(take_images_action)
-        
+
         record_slide_action = QtWidgets.QAction("Take Slide Image", self)
         record_slide_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_N))
         record_slide_action.triggered.connect(self.record_slide)
@@ -170,6 +175,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.wf_image = None
         self.metadata = None
 
+        if args.folder:
+            self.load_images(args.folder)
+
     def connect_camera(self):
         self.sim_system.connect()
 
@@ -212,10 +220,10 @@ class MainWindow(QtWidgets.QMainWindow):
             self.grating_distance_x_txt.setText(str(params['grating_distance_x']))
             self.grating_distance_y_txt.setText(str(params['grating_distance_y']))
 
-    def load_images(self):
-        folder = self.output_folder_txt.text()
-        file_dialog = QtWidgets.QFileDialog()
-        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Load recording dir", folder)
+    def load_images(self, folder = None):
+        if folder is None:
+            file_dialog = QtWidgets.QFileDialog()
+            folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Load recording dir", folder)
         if folder is not None and folder != "":
             self.sim_imaging.load_images(folder)
             self.lmi_imaging.load_images(folder)
@@ -225,7 +233,7 @@ class MainWindow(QtWidgets.QMainWindow):
              lambda x: f"{str(int(x.group())+1).zfill(len(x.group()))}",
              self.recording_name_txt.text())
         self.recording_name_txt.setText(res)
-        
+
     def record_slide(self):
         self.project_zero_pattern_loop()
         self.take_images()
