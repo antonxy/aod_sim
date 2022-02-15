@@ -102,23 +102,8 @@ class SIMImaging(ImagingMethod):
         self.reconstruction_offset_y = QtWidgets.QLineEdit("0")
         layout.addRow("Reconstruction offset y", self.reconstruction_offset_y)
 
-        self.reconstruction_pixelsize = QtWidgets.QLineEdit("11")
-        layout.addRow("Pixelsize [um]", self.reconstruction_pixelsize)
-
-        self.reconstruction_magnification = QtWidgets.QLineEdit("1.5")
-        layout.addRow("Magnification", self.reconstruction_magnification)
-
-        self.reconstruction_na = QtWidgets.QLineEdit("0.02")
-        layout.addRow("NA", self.reconstruction_na)
-
-        self.reconstruction_wavelength = QtWidgets.QLineEdit("0.660")
-        layout.addRow("Wavelength [um]", self.reconstruction_wavelength)
-
         self.reconstruction_eta_txt = QtWidgets.QLineEdit("0.5")
         layout.addRow("Reconstruction eta", self.reconstruction_eta_txt)
-
-        self.reconstruction_mtf_data = QtWidgets.QTextEdit("")
-        layout.addRow("MTF data", self.reconstruction_mtf_data)
 
         self.use_filter_chb = QtWidgets.QCheckBox("Use frequency space filtering")
         layout.addRow("Filter", self.use_filter_chb)
@@ -204,7 +189,71 @@ class SIMImaging(ImagingMethod):
 
         self.pattern_deg = pattern_deg
         self.params = params
+        self.update_psf_plots()
 
+    def update_psf_plots(self):
+        desired_distance = self.params['desired_distance']
+        aod_deg_to_um_in_sample_plane = self.params['aod_deg_to_um_in_sample_plane']
+        pixelsize = self.params['pixelsize']
+        magnification = self.params['magnification']
+        NA = self.params['NA']
+        wavelength = self.params['wavelength']
+        mtf_data = self.params['mtf_data']
+
+        # TODO could do all this in pattern calculation also, would make more sense
+        #Expected PSF
+        def gaussian(x, mu, sig):
+            return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+
+        def plot_psf(plt, k):
+            N = 9
+            dx = pixelsize / magnification
+            res = wavelength / (2 * NA)
+            x = np.linspace(-dx*N/2, dx*N/2, N * 10)  # [um]
+            sigma = res / 2.355 # FWHM to sigma
+
+            # TODO res is not FWHM, or is it?. And PSF is not really gaussian but a sinc
+            psf_orig = gaussian(x, 0, sigma)
+            plt.plot(x, psf_orig, label="emission psf")
+
+            mod = (1 + np.cos(k * x)) / 2
+            plt.plot(x, mod, '--', label="modulation")
+
+            plt.plot(x, psf_orig * mod, label="SIM psf")
+
+            plt.vlines(np.arange(-dx*N/2, dx*N/2, dx), 0, 0.1, 'r', label="pixel in sample plane")
+
+            plt.set_xlabel("x [um]")
+            plt.set_title("PSF Shaping")
+            plt.legend(loc="upper right")
+
+        def plot_otf(plt, k):
+            N = 100
+            dx = pixelsize / magnification
+            res = wavelength / (2 * NA)
+            oversampling = res / dx
+            dk = oversampling / (N / 2)  # Sampling in frequency plane. This is unitless, not sure what is means exactly
+            k_to_cycles_per_um = NA / wavelength
+            kx = np.arange(-dk * N / 2, dk * N / 2, dk)
+
+            plt.plot(kx * k_to_cycles_per_um, self.p._tf(abs(kx)) * 2, label="OTF");
+            nyq = 0.5 / dx
+            plt.vlines([-nyq, nyq], 0, 0.2, 'r', label="nyquist frequency")
+            plt.vlines([-k / (2 * np.pi), k / (2 * np.pi)], 0, 0.2, 'g', label="illumination frequency")
+            if mtf_data != "":
+                mtf = np.fromstring("\n".join(mtf_data.split("\n")[1:]), sep='\t').reshape(-1, 2)
+                plt.plot(mtf[:, 0] / 1000, mtf[:, 1], label="measured MTF")
+            plt.set_ylim(0, None)
+            plt.set_xlabel("Frequency [cycles / um]")
+            plt.legend(loc="upper right")
+
+        illumination_freq = (1 / (desired_distance * aod_deg_to_um_in_sample_plane)) * 2 * np.pi
+
+        self.psf_plot.plot.fig.clear()
+        axs = self.psf_plot.plot.fig.subplots(1, 2)
+        plot_psf(axs[0], k = illumination_freq)
+        plot_otf(axs[1], k = illumination_freq)
+        self.psf_plot.plot.draw()
 
     def take_images(self, system):
         if not self.sim_enabled_chb.isChecked():
@@ -237,13 +286,11 @@ class SIMImaging(ImagingMethod):
         offset_x = int(self.reconstruction_offset_x.text())
         offset_y = int(self.reconstruction_offset_y.text())
         eta = float(self.reconstruction_eta_txt.text())
-#TODO save reconstruction parameters
-#TODO also maybe set these not as part of reconstruction but recording
-        pixelsize = float(self.reconstruction_pixelsize.text())
-        magnification = float(self.reconstruction_magnification.text())
-        NA = float(self.reconstruction_na.text())
-        wavelength = float(self.reconstruction_wavelength.text())
-        mtf_data = self.reconstruction_mtf_data.toPlainText()
+        pixelsize = self.params['pixelsize']
+        magnification = self.params['magnification']
+        NA = self.params['NA']
+        wavelength = self.params['wavelength']
+        mtf_data = self.params['mtf_data']
 
 
         assert self.frames.shape[0] == 7
@@ -277,48 +324,6 @@ class SIMImaging(ImagingMethod):
         self.bands_plot.connect_clim(ims)
         self.bands_plot.plot.draw()
 
-
-        # TODO could do all this in pattern calculation also, would make more sense
-        #Expected PSF
-        def gaussian(x, mu, sig):
-            return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
-
-        def plot_psf(plt, k):
-            N = 9
-            x = np.linspace(-self.p._dx*N/2, self.p._dx*N/2, N * 10)  # [um]
-            sigma = self.p._res / 2.355 # FWHM to sigma
-
-            # TODO res is not FWHM, or is it?. And PSF is not really gaussian but a sinc
-            psf_orig = gaussian(x, 0, sigma)
-            plt.plot(x, psf_orig, label="emission psf")
-
-            mod = (1 + np.cos(k * x)) / 2
-            plt.plot(x, mod, '--', label="modulation")
-
-            plt.plot(x, psf_orig * mod, label="SIM psf")
-
-            plt.vlines(np.arange(-self.p._dx*N/2, self.p._dx*N/2, self.p._dx), 0, 0.1, 'r', label="pixel in sample plane")
-
-            plt.set_xlabel("x [um]")
-            plt.set_title("PSF Shaping")
-            plt.legend(loc="upper right")
-
-        def plot_otf(plt):
-            plt.plot(self.p._kx[0] * self.p._k_to_cycles_per_um, self.p._tf(abs(self.p._kx[0])) * 2, label="OTF");
-            nyq = 0.5 / self.p._dx
-            plt.vlines([-nyq, nyq], 0, 0.2, label="nyquist frequency")
-            if mtf_data != "":
-                mtf = np.fromstring("\n".join(mtf_data.split("\n")[1:]), sep='\t').reshape(-1, 2)
-                plt.plot(mtf[:, 0] / 1000, mtf[:, 1])
-            plt.set_ylim(0, None)
-            plt.set_xlabel("Frequency [cycles / um]")
-            plt.legend(loc="upper right")
-
-        self.psf_plot.plot.fig.clear()
-        axs = self.psf_plot.plot.fig.subplots(1, 2)
-        plot_psf(axs[0], self.p.mean_carrier_freq)
-        plot_otf(axs[1])
-        self.psf_plot.plot.draw()
 
     def reconstruct(self):
         if not self.sim_enabled_chb.isChecked():

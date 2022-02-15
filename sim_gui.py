@@ -43,15 +43,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         recording_group = QtWidgets.QGroupBox("Recording")
         layout = QtWidgets.QFormLayout()
-        self.orientation_deg_txt = QtWidgets.QLineEdit("0")
-        layout.addRow("Orientation [deg]", self.orientation_deg_txt)
-
-        self.grating_distance_x_txt = QtWidgets.QLineEdit("0.5")
-        layout.addRow("Grating dot distance x [deg]", self.grating_distance_x_txt)
-
-        self.grating_distance_y_txt = QtWidgets.QLineEdit("0.5")
-        layout.addRow("Grating dot distance y [deg]", self.grating_distance_y_txt)
-
         self.pattern_delay_txt = QtWidgets.QLineEdit("0.0")
         layout.addRow("Pattern delay [sec]", self.pattern_delay_txt)
 
@@ -66,10 +57,43 @@ class MainWindow(QtWidgets.QMainWindow):
 
         recording_group.setLayout(layout)
 
+        optical_group = QtWidgets.QGroupBox("Optical Parameters")
+        layout = QtWidgets.QFormLayout()
+
+        self.orientation_deg_txt = QtWidgets.QLineEdit("0")
+        layout.addRow("Orientation [deg]", self.orientation_deg_txt)
+
+        self.grating_distance_x_txt = QtWidgets.QLineEdit("0.5")
+        layout.addRow("Grating dot distance x [deg]", self.grating_distance_x_txt)
+
+        self.grating_distance_y_txt = QtWidgets.QLineEdit("0.5")
+        layout.addRow("Grating dot distance y [deg]", self.grating_distance_y_txt)
+
+        self.aod_deg_to_um_in_sample_plane = QtWidgets.QLineEdit("1483")
+        layout.addRow("Shift in sample plane per AOD angle[um / deg]", self.aod_deg_to_um_in_sample_plane)
+
+        self.pixelsize_txt = QtWidgets.QLineEdit("11")
+        layout.addRow("Pixelsize [um]", self.pixelsize_txt)
+
+        self.magnification_txt = QtWidgets.QLineEdit("1.5")
+        layout.addRow("Magnification", self.magnification_txt)
+
+        self.na_txt = QtWidgets.QLineEdit("0.02")
+        layout.addRow("NA", self.na_txt)
+
+        self.wavelength_txt = QtWidgets.QLineEdit("0.660")
+        layout.addRow("Wavelength [um]", self.wavelength_txt)
+
+        self.mtf_data_txt = QtWidgets.QTextEdit("")
+        layout.addRow("MTF data", self.mtf_data_txt)
+
+        optical_group.setLayout(layout)
+
 
         layout = QtWidgets.QVBoxLayout()
         hlayout = QtWidgets.QHBoxLayout()
         hlayout.addWidget(recording_group)
+        hlayout.addWidget(optical_group)
         hlayout.addWidget(self.sim_imaging.parameters_widget)
         hlayout.addWidget(self.lmi_imaging.parameters_widget)
         hlayout.addWidget(self.sim_imaging.reconstruction_parameters_widget)
@@ -190,6 +214,12 @@ class MainWindow(QtWidgets.QMainWindow):
             "grating_distance_y": float(self.grating_distance_y_txt.text()),
             "orientation_deg": float(self.orientation_deg_txt.text()),
             "pattern_delay_sec": float(self.pattern_delay_txt.text()),
+            "aod_deg_to_um_in_sample_plane": float(self.aod_deg_to_um_in_sample_plane.text()),
+            "pixelsize": float(self.pixelsize_txt.text()),
+            "magnification": float(self.magnification_txt.text()),
+            "NA": float(self.na_txt.text()),
+            "wavelength": float(self.wavelength_txt.text()),
+            "mtf_data": self.mtf_data_txt.toPlainText(),
             "recording_notes": self.image_notes_txt.text(),
             "software_version": get_git_revision_short_hash(),
             "date_time": datetime.now().astimezone().isoformat(),
