@@ -157,6 +157,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.recon_plot = PlotWidget(None, num_clim = 3)
         self.tab_widget.addTab(self.recon_plot, "All Reconstructions")
 
+        self.recon_fft_plot = PlotWidget(None, num_clim = 3)
+        self.tab_widget.addTab(self.recon_fft_plot, "Reconstruction FFTs")
+
         widget = QtWidgets.QWidget()
         widget.setLayout(layout)
         self.setCentralWidget(widget)
@@ -164,6 +167,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.sim_system = SIMSystem()
 
         self.frames = None
+        self.wf_image = None
         self.metadata = None
 
     def connect_camera(self):
@@ -253,30 +257,54 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.recon_plot.plot.fig.clear()
         ax1, ax2, ax3 = self.recon_plot.plot.fig.subplots(1, 3, sharex=True, sharey=True)
+        self.recon_fft_plot.plot.fig.clear()
+        ax1f, ax2f, ax3f = self.recon_fft_plot.plot.fig.subplots(1, 3, sharex=True, sharey=True)
 
         if sim_image is not None:
             im1 = ax1.imshow(sim_image)
             ax1.set_title("Hex SIM")
             self.recon_plot.connect_clim(im1, 0)
+
+            im1 = ax1f.imshow(np.fft.fftshift(np.abs(np.fft.fft2(sim_image))))
+            ax1f.set_title("Hex SIM")
+            self.recon_fft_plot.connect_clim(im1, 0)
+
         if lmi_image is not None:
             lmi_image = scipy.ndimage.zoom(lmi_image, (2, 2), order=2)
             im2 = ax2.imshow(lmi_image)
             ax2.set_title("LMI")
             self.recon_plot.connect_clim(im2, 1)
+
+            im2 = ax2f.imshow(np.fft.fftshift(np.abs(np.fft.fft2(lmi_image))))
+            ax2f.set_title("LMI")
+            self.recon_fft_plot.connect_clim(im2, 1)
+
         if self.wf_image is not None:
             wf_upres = scipy.ndimage.zoom(self.wf_image, (2, 2), order=2)
             ax3.set_title("WF")
             im3 = ax3.imshow(wf_upres)
             self.recon_plot.connect_clim(im3, 2)
+
+            im3 = ax3f.imshow(np.fft.fftshift(np.abs(np.fft.fft2(wf_upres))))
+            ax3f.set_title("WF")
+            self.recon_fft_plot.connect_clim(im3, 2)
         elif sim_wf is not None:
             ax3.set_title("WF (sum of SIM images)")
             im3 = ax3.imshow(sim_wf)
             self.recon_plot.connect_clim(im3, 2)
+
+            im3 = ax3f.imshow(np.fft.fftshift(np.abs(np.fft.fft2(sim_wf))))
+            ax3f.set_title("WF (sum of SIM images)")
+            self.recon_fft_plot.connect_clim(im3, 2)
         elif lmi_wf is not None:
             ax3.set_title("WF (sum of LMI images)")
             lmi_wf = scipy.ndimage.zoom(lmi_wf, (2, 2), order=2)
             im3 = ax3.imshow(lmi_wf)
             self.recon_plot.connect_clim(im3, 2)
+
+            im3 = ax3f.imshow(np.fft.fftshift(np.abs(np.fft.fft2(lmi_wf))))
+            ax3f.set_title("WF (sum of LMI images)")
+            self.recon_fft_plot.connect_clim(im3, 2)
 
         self.recon_plot.plot.draw()
 
