@@ -12,6 +12,7 @@ import os
 from datetime import datetime
 import re
 import argparse
+import json
 
 from widgets import PlotWidget
 
@@ -20,6 +21,7 @@ import imaging_method
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--folder')
+parser.add_argument('-s', '--settings')
 parser.add_argument('--simulate', action='store_true')
 args = parser.parse_args()
 
@@ -85,6 +87,7 @@ class MainWindow(QtWidgets.QMainWindow):
         layout.addRow("Wavelength [um]", self.wavelength_txt)
 
         self.mtf_data_txt = QtWidgets.QTextEdit("")
+        self.mtf_data_txt.setToolTip("Measured MTF in camera plane. TSV with header \"lp/mm\tModulation Factor\"")
         layout.addRow("MTF data", self.mtf_data_txt)
 
         optical_group.setLayout(layout)
@@ -99,6 +102,20 @@ class MainWindow(QtWidgets.QMainWindow):
         hlayout.addWidget(self.sim_imaging.reconstruction_parameters_widget)
         layout.addLayout(hlayout)
 
+        appMenu = self.menuBar().addMenu("&Application")
+
+        load_settings_action = QtWidgets.QAction("&Load Settings", self)
+        load_settings_action.triggered.connect(self.load_settings_action)
+        appMenu.addAction(load_settings_action)
+
+        save_settings_action = QtWidgets.QAction("&Save Settings", self)
+        save_settings_action.triggered.connect(self.save_settings_action)
+        appMenu.addAction(save_settings_action)
+
+        close_action = QtWidgets.QAction("&Quit", self)
+        close_action.setShortcut(QtGui.QKeySequence.Quit)
+        close_action.triggered.connect(self.close)
+        appMenu.addAction(close_action)
 
         cameraMenu = self.menuBar().addMenu("&Camera")
         connect_camera_action = QtWidgets.QAction("&Connect Camera", self)
@@ -168,11 +185,6 @@ class MainWindow(QtWidgets.QMainWindow):
         reconstruct_images_nocal_action.triggered.connect(self.reconstruct_image_nocal)
         reconstructMenu.addAction(reconstruct_images_nocal_action)
 
-        close_action = QtWidgets.QAction("&Quit", self)
-        close_action.setShortcut(QtGui.QKeySequence.Quit)
-        close_action.triggered.connect(self.close)
-        cameraMenu.addAction(close_action)
-
         self.tab_widget = QtWidgets.QTabWidget(self)
         layout.addWidget(self.tab_widget)
 
@@ -201,6 +213,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         if args.folder:
             self.load_images(folder = args.folder)
+        if args.settings:
+            self.load_settings_action(file = args.settings)
+        else:
+            self.load_settings({})
 
     def connect_camera(self):
         self.sim_system.connect()
@@ -224,6 +240,53 @@ class MainWindow(QtWidgets.QMainWindow):
             "software_version": get_git_revision_short_hash(),
             "date_time": datetime.now().astimezone().isoformat(),
         }
+
+    # This is for parameters which should not be saved as part of image metadata
+    def parse_settings(self):
+        return {
+            "output_folder": self.output_folder_txt.text(),
+            "recording_name": self.recording_name_txt.text(),
+        }
+
+    def save_settings_action(self, *args, file = None):
+        if file is None:
+            file = QtWidgets.QFileDialog.getSaveFileName(self, "Save settings", filter="JSON (*.json)")[0]
+        if file is not None and file != "":
+            with open(file, 'w') as f:
+                params = {
+                    "global": {**self.parse_global_params(), **self.parse_settings()},
+                    "sim": self.sim_imaging.parse_parameters(),
+                    "lmi": self.lmi_imaging.parse_parameters()
+                }
+                json.dump(params, f)
+
+    def load_settings_action(self, *args, file = None):
+        if file is None:
+            file = QtWidgets.QFileDialog.getOpenFileName(self, "Load settings", filter="JSON (*.json)")[0]
+        if file is not None and file != "":
+            with open(file, 'r') as f:
+                params = json.load(f)
+                self.load_settings(params)
+
+    def load_settings(self, params):
+        global_params = params.get("global", {})
+        self.output_folder_txt.setText(global_params.get("output_folder", "../recordings"))
+        self.recording_name_txt.setText(global_params.get("recording_name", "rec001"))
+
+        self.grating_distance_x_txt.setText(str(global_params.get("grating_distance_x", "0.27")))
+        self.grating_distance_y_txt.setText(str(global_params.get("grating_distance_y", "0.27")))
+        self.orientation_deg_txt.setText(str(global_params.get("orientation_deg", "0")))
+        self.pattern_delay_txt.setText(str(global_params.get("pattern_delay_sec", "0")))
+        self.aod_deg_to_um_in_sample_plane.setText(str(global_params.get("aod_deg_to_um_in_sample_plane", "1483")))
+        self.pixelsize_txt.setText(str(global_params.get("pixelsize", "11")))
+        self.magnification_txt.setText(str(global_params.get("magnification", "1.5")))
+        self.na_txt.setText(str(global_params.get("NA", "0.025")))
+        self.wavelength_txt.setText(str(global_params.get("wavelength", "0.660")))
+        self.mtf_data_txt.setText(global_params.get("mtf_data", ""))
+        self.image_notes_txt.setText(global_params.get("recording_notes", ""))
+
+        self.sim_imaging.load_parameters(params.get("sim", {}))
+        self.lmi_imaging.load_parameters(params.get("lmi", {}))
 
     def create_patterns(self):
         self.sim_imaging.update_patterns(global_params = self.parse_global_params())
@@ -280,6 +343,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 os.makedirs(rec_folder)
                 self.sim_imaging.save_images(rec_folder)
                 self.lmi_imaging.save_images(rec_folder)
+                self.save_settings_action(file = os.path.join(rec_folder, "settings.json"))
                 QtWidgets.QMessageBox.information(self, "Success", "Saved successfully")
                 self.increment_filename()
             else:

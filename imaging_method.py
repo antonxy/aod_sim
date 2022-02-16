@@ -25,6 +25,9 @@ class ImagingMethod:
     def parse_parameters(self):
         pass
 
+    def load_parameters(self, params):
+        pass
+
     def update_patterns(self, global_params):
         pass
 
@@ -105,6 +108,15 @@ class SIMImaging(ImagingMethod):
         self.reconstruction_eta_txt = QtWidgets.QLineEdit("0.5")
         layout.addRow("Reconstruction eta", self.reconstruction_eta_txt)
 
+        self.reconstruction_w_txt = QtWidgets.QLineEdit("0.3")
+        layout.addRow("Wiener parameter", self.reconstruction_w_txt)
+
+        self.reconstruction_alpha_txt = QtWidgets.QLineEdit("0.3")
+        layout.addRow("Zero order attenuation width", self.reconstruction_alpha_txt)
+
+        self.reconstruction_beta_txt = QtWidgets.QLineEdit("0.999")
+        layout.addRow("Zero order attenuation", self.reconstruction_beta_txt)
+
         self.use_filter_chb = QtWidgets.QCheckBox("Use frequency space filtering")
         layout.addRow("Filter", self.use_filter_chb)
 
@@ -146,7 +158,29 @@ class SIMImaging(ImagingMethod):
         return {
             "desired_distance": float(self.desired_distance_txt.text()),
             "pattern_rate_Hz": float(self.pattern_hz_txt.text()),
+
+            "reconstruction_size": int(self.reconstruction_size_txt.text()),
+            "reconstruction_offset_x": int(self.reconstruction_offset_x.text()),
+            "reconstruction_offset_y": int(self.reconstruction_offset_y.text()),
+            "reconstruction_eta": float(self.reconstruction_eta_txt.text()),
+            "reconstruction_w": float(self.reconstruction_w_txt.text()),
+            "reconstruction_alpha": float(self.reconstruction_alpha_txt.text()),
+            "reconstruction_beta": float(self.reconstruction_beta_txt.text()),
+            "reconstruction_use_filter": self.use_filter_chb.isChecked(),
         }
+
+    def load_parameters(self, params):
+        self.desired_distance_txt.setText(str(params.get("desired_distance", "0.013")))
+        self.pattern_hz_txt.setText(str(params.get("pattern_rate_Hz", "10000")))
+
+        self.reconstruction_size_txt.setText(str(params.get("reconstruction_size", "1000")))
+        self.reconstruction_offset_x.setText(str(params.get("reconstruction_offset_x", "0")))
+        self.reconstruction_offset_y.setText(str(params.get("reconstruction_offset_y", "0")))
+        self.reconstruction_eta_txt.setText(str(params.get("reconstruction_eta", "0.5")))
+        self.reconstruction_w_txt.setText(str(params.get("reconstruction_w", "0.3")))
+        self.reconstruction_alpha_txt.setText(str(params.get("reconstruction_alpha", "0.3")))
+        self.reconstruction_beta_txt.setText(str(params.get("reconstruction_beta", "0.999")))
+        self.use_filter_chb.setChecked(params.get("reconstruction_use_filter", False))
 
     def update_patterns(self, global_params):
         if not self.sim_enabled_chb.isChecked():
@@ -285,6 +319,9 @@ class SIMImaging(ImagingMethod):
         N = int(self.reconstruction_size_txt.text())
         offset_x = int(self.reconstruction_offset_x.text())
         offset_y = int(self.reconstruction_offset_y.text())
+        alpha = float(self.reconstruction_alpha_txt.text())
+        beta = float(self.reconstruction_beta_txt.text())
+        w = float(self.reconstruction_w_txt.text())
         eta = float(self.reconstruction_eta_txt.text())
         pixelsize = self.params['pixelsize']
         magnification = self.params['magnification']
@@ -301,6 +338,9 @@ class SIMImaging(ImagingMethod):
         self.p.magnification = magnification
         self.p.NA = NA
         self.p.wavelength = wavelength
+        self.p.alpha = alpha
+        self.p.beta = beta
+        self.p.w = w
         self.p.eta = eta
         self.p.calibrate(frames)
 
@@ -429,6 +469,13 @@ class LMIImaging(ImagingMethod):
             "multiscan_y": int(self.multiscan_y_txt.text()),
             "pattern_rate_Hz": float(self.pattern_hz_txt.text()),
         }
+
+    def load_parameters(self, params):
+        self.steps_x_txt.setText(str(params.get("steps_x", "10")))
+        self.steps_y_txt.setText(str(params.get("steps_y", "10")))
+        self.multiscan_x_txt.setText(str(params.get("multiscan_x", "10")))
+        self.multiscan_y_txt.setText(str(params.get("multiscan_y", "10")))
+        self.pattern_hz_txt.setText(str(params.get("pattern_rate_Hz", "10000")))
 
     def update_patterns(self, global_params):
         if not self.lmi_enabled_chb.isChecked():
