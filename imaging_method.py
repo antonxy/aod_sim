@@ -214,14 +214,14 @@ class SIMImaging(ImagingMethod):
 
             # TODO res is not FWHM, or is it?. And PSF is not really gaussian but a sinc
             psf_orig = gaussian(x, 0, sigma)
-            plt.plot(x, psf_orig, label="emission psf")
+            plt.plot(x, psf_orig, label="Emission PSF")
 
             mod = (1 + np.cos(k * x)) / 2
-            plt.plot(x, mod, '--', label="modulation")
+            plt.plot(x, mod, '--', label="Modulation Function")
 
-            plt.plot(x, psf_orig * mod, label="SIM psf")
+            plt.plot(x, psf_orig * mod, label="SIM PSF")
 
-            plt.vlines(np.arange(-dx*N/2, dx*N/2, dx), 0, 0.1, 'r', label="pixel in sample plane")
+            plt.vlines(np.arange(-dx*N/2, dx*N/2, dx), 0, 0.1, 'r', label="Pixel in Sample Plane")
 
             plt.set_xlabel("x [um]")
             plt.set_title("PSF Shaping")
@@ -236,13 +236,13 @@ class SIMImaging(ImagingMethod):
             k_to_cycles_per_um = NA / wavelength
             kx = np.arange(-dk * N / 2, dk * N / 2, dk)
 
-            plt.plot(kx * k_to_cycles_per_um, self.p._tf(abs(kx)) * 2, label="OTF");
+            plt.plot(kx * k_to_cycles_per_um, self.p._tf(abs(kx)) * 2, label="Emission MTF");
             nyq = 0.5 / dx
-            plt.vlines([-nyq, nyq], 0, 0.2, 'r', label="nyquist frequency")
-            plt.vlines([-k / (2 * np.pi), k / (2 * np.pi)], 0, 0.2, 'g', label="illumination frequency")
+            plt.vlines([-nyq, nyq], 0, 0.2, 'r', label="Nyquist Frequency")
+            plt.vlines([-k / (2 * np.pi), k / (2 * np.pi)], 0, 0.2, 'g', label="Illumination Frequency")
             if mtf_data != "":
                 mtf = np.fromstring("\n".join(mtf_data.split("\n")[1:]), sep='\t').reshape(-1, 2)
-                plt.plot(mtf[:, 0] / 1000, mtf[:, 1], label="measured MTF")
+                plt.plot(mtf[:, 0] / 1000, mtf[:, 1], label="Measured MTF")
             plt.set_ylim(0, None)
             plt.set_xlabel("Frequency [cycles / um]")
             plt.legend(loc="upper right")
