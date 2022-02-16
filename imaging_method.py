@@ -230,8 +230,10 @@ class SIMImaging(ImagingMethod):
         aod_deg_to_um_in_sample_plane = self.params['aod_deg_to_um_in_sample_plane']
         pixelsize = self.params['pixelsize']
         magnification = self.params['magnification']
-        NA = self.params['NA']
-        wavelength = self.params['wavelength']
+        ex_NA = self.params['ex_NA']
+        ex_wavelength = self.params['ex_wavelength']
+        em_NA = self.params['em_NA']
+        em_wavelength = self.params['em_wavelength']
         mtf_data = self.params['mtf_data']
 
         # TODO could do all this in pattern calculation also, would make more sense
@@ -239,7 +241,7 @@ class SIMImaging(ImagingMethod):
         def gaussian(x, mu, sig):
             return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
-        def plot_psf(plt, k):
+        def plot_psf_modulation(plt, wavelength, NA, k):
             N = 9
             dx = pixelsize / magnification
             res = wavelength / (2 * NA)
@@ -261,7 +263,27 @@ class SIMImaging(ImagingMethod):
             plt.set_title("PSF Shaping")
             plt.legend(loc="upper right")
 
-        def plot_otf(plt, k):
+        def plot_projected_pattern(plt, wavelength, NA, dot_distance_um):
+            N = 9
+            dx = pixelsize / magnification
+            res = wavelength / (2 * NA)
+            x = np.linspace(-dx*N/2, dx*N/2, N * 10)  # [um]
+            sigma = res / 2.355 # FWHM to sigma
+
+            # TODO res is not FWHM, or is it?. And PSF is not really gaussian but a sinc
+            psf_orig = gaussian(x, 0, sigma)
+            plt.plot(x, psf_orig, label="Excitation PSF")
+
+            dot_positions = np.arange(-dx*N, dx*N, dot_distance_um)
+            dot_positions -= np.mean(dot_positions) # Center at zero
+            projected_pattern = np.sum(np.stack([gaussian(x, mean, sigma) for mean in dot_positions]), axis=0)
+            plt.plot(x, projected_pattern, label="Projected Pattern")
+
+            plt.set_xlabel("x [um]")
+            plt.set_title("Projected Pattern")
+            plt.legend(loc="upper right")
+
+        def plot_otf(plt, wavelength, NA, k, mtf_data = "", name = ""):
             N = 100
             dx = pixelsize / magnification
             res = wavelength / (2 * NA)
@@ -270,7 +292,7 @@ class SIMImaging(ImagingMethod):
             k_to_cycles_per_um = NA / wavelength
             kx = np.arange(-dk * N / 2, dk * N / 2, dk)
 
-            plt.plot(kx * k_to_cycles_per_um, self.p._tf(abs(kx)) * 2, label="Emission MTF");
+            plt.plot(kx * k_to_cycles_per_um, self.p._tf(abs(kx)) * 2, label=f"{name} MTF");
             nyq = 0.5 / dx
             plt.vlines([-nyq, nyq], 0, 0.2, 'r', label="Nyquist Frequency")
             plt.vlines([-k / (2 * np.pi), k / (2 * np.pi)], 0, 0.2, 'g', label="Illumination Frequency")
@@ -280,13 +302,18 @@ class SIMImaging(ImagingMethod):
             plt.set_ylim(0, None)
             plt.set_xlabel("Frequency [cycles / um]")
             plt.legend(loc="upper right")
+            plt.set_title(f"{name} MTF")
 
-        illumination_freq = (1 / (desired_distance * aod_deg_to_um_in_sample_plane)) * 2 * np.pi
+        dot_distance_um = desired_distance * aod_deg_to_um_in_sample_plane
+        illumination_freq = (1 / dot_distance_um) * 2 * np.pi
 
         self.psf_plot.plot.fig.clear()
-        axs = self.psf_plot.plot.fig.subplots(1, 2)
-        plot_psf(axs[0], k = illumination_freq)
-        plot_otf(axs[1], k = illumination_freq)
+        axs = self.psf_plot.plot.fig.subplots(2, 2)
+        plot_projected_pattern(axs[0, 0], wavelength = ex_wavelength, NA = ex_NA, dot_distance_um = dot_distance_um)
+        plot_otf(axs[0, 1], wavelength = ex_wavelength, NA = ex_NA, k = illumination_freq, name="Excitation")
+
+        plot_psf_modulation(axs[1, 0], wavelength = em_wavelength, NA = em_NA, k = illumination_freq)
+        plot_otf(axs[1, 1], wavelength = em_wavelength, NA = em_NA, k = illumination_freq, mtf_data = mtf_data, name="Emission")
         self.psf_plot.plot.draw()
 
     def take_images(self, system):
@@ -325,8 +352,8 @@ class SIMImaging(ImagingMethod):
         eta = float(self.reconstruction_eta_txt.text())
         pixelsize = self.params['pixelsize']
         magnification = self.params['magnification']
-        NA = self.params['NA']
-        wavelength = self.params['wavelength']
+        em_NA = self.params['em_NA']
+        em_wavelength = self.params['em_wavelength']
         mtf_data = self.params['mtf_data']
 
 
@@ -336,8 +363,8 @@ class SIMImaging(ImagingMethod):
         self.p.N = N
         self.p.pixelsize = pixelsize
         self.p.magnification = magnification
-        self.p.NA = NA
-        self.p.wavelength = wavelength
+        self.p.NA = em_NA
+        self.p.wavelength = em_wavelength
         self.p.alpha = alpha
         self.p.beta = beta
         self.p.w = w

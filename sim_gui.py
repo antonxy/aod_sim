@@ -80,11 +80,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.magnification_txt = QtWidgets.QLineEdit("1.5")
         layout.addRow("Magnification", self.magnification_txt)
 
-        self.na_txt = QtWidgets.QLineEdit("0.02")
-        layout.addRow("NA", self.na_txt)
+        self.ex_na_txt = QtWidgets.QLineEdit("0.02")
+        layout.addRow("Excitation NA", self.ex_na_txt)
 
-        self.wavelength_txt = QtWidgets.QLineEdit("0.660")
-        layout.addRow("Wavelength [um]", self.wavelength_txt)
+        self.em_na_txt = QtWidgets.QLineEdit("0.02")
+        layout.addRow("Emission NA", self.em_na_txt)
+
+        self.ex_wavelength_txt = QtWidgets.QLineEdit("0.660")
+        layout.addRow("Excitation Wavelength [um]", self.ex_wavelength_txt)
+
+        self.em_wavelength_txt = QtWidgets.QLineEdit("0.680")
+        layout.addRow("Emission Wavelength [um]", self.em_wavelength_txt)
 
         self.mtf_data_txt = QtWidgets.QTextEdit("")
         self.mtf_data_txt.setToolTip("Measured MTF in camera plane. TSV with header \"lp/mm\tModulation Factor\"")
@@ -233,8 +239,10 @@ class MainWindow(QtWidgets.QMainWindow):
             "aod_deg_to_um_in_sample_plane": float(self.aod_deg_to_um_in_sample_plane.text()),
             "pixelsize": float(self.pixelsize_txt.text()),
             "magnification": float(self.magnification_txt.text()),
-            "NA": float(self.na_txt.text()),
-            "wavelength": float(self.wavelength_txt.text()),
+            "ex_NA": float(self.ex_na_txt.text()),
+            "em_NA": float(self.em_na_txt.text()),
+            "ex_wavelength": float(self.ex_wavelength_txt.text()),
+            "em_wavelength": float(self.em_wavelength_txt.text()),
             "mtf_data": self.mtf_data_txt.toPlainText(),
             "recording_notes": self.image_notes_txt.text(),
             "software_version": get_git_revision_short_hash(),
@@ -280,8 +288,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.aod_deg_to_um_in_sample_plane.setText(str(global_params.get("aod_deg_to_um_in_sample_plane", "1483")))
         self.pixelsize_txt.setText(str(global_params.get("pixelsize", "11")))
         self.magnification_txt.setText(str(global_params.get("magnification", "1.5")))
-        self.na_txt.setText(str(global_params.get("NA", "0.025")))
-        self.wavelength_txt.setText(str(global_params.get("wavelength", "0.660")))
+        self.ex_na_txt.setText(str(global_params.get("ex_NA", "0.025")))
+        self.em_na_txt.setText(str(global_params.get("em_NA", "0.025")))
+        self.ex_wavelength_txt.setText(str(global_params.get("ex_wavelength", "0.660")))
+        self.em_wavelength_txt.setText(str(global_params.get("em_wavelength", "0.680")))
         self.mtf_data_txt.setText(global_params.get("mtf_data", ""))
         self.image_notes_txt.setText(global_params.get("recording_notes", ""))
 
