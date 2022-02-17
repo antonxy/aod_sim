@@ -191,6 +191,10 @@ class MainWindow(QtWidgets.QMainWindow):
         reconstruct_images_nocal_action.triggered.connect(self.reconstruct_image_nocal)
         reconstructMenu.addAction(reconstruct_images_nocal_action)
 
+        batch_reconstruct_action = QtWidgets.QAction("&Batch Reconstruct", self)
+        batch_reconstruct_action.triggered.connect(self.batch_reconstruct)
+        reconstructMenu.addAction(batch_reconstruct_action)
+
         self.tab_widget = QtWidgets.QTabWidget(self)
         layout.addWidget(self.tab_widget)
 
@@ -358,6 +362,22 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.increment_filename()
             else:
                 QtWidgets.QMessageBox.critical(self, "Error", "Directory already exists, not saving")
+
+    def batch_reconstruct(self):
+        folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Load recordings dir")
+        out_folder = QtWidgets.QFileDialog.getExistingDirectory(self, "Output dir")
+        if folder is not None and folder != "" and out_folder is not None and out_folder != "":
+            subfolders = os.listdir(folder)
+            for subfolder in subfolders:
+                print(f"Reconstruct {subfolder}")
+                path = os.path.join(folder, subfolder)
+                if not os.path.isdir(path):
+                    print(f"{path} is not a directory")
+                    continue
+                self.load_images(folder = path)
+                self.reconstruct_image()
+                self.sim_imaging.save_images(out_folder, prefix = subfolder + "_", save_raw = False, save_metadata = False)
+                self.lmi_imaging.save_images(out_folder, prefix = subfolder + "_", save_raw = False, save_metadata = False)
 
     def reconstruct_image(self):
         self.sim_imaging.calibrate()

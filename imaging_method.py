@@ -46,12 +46,14 @@ class ImagingMethod:
     def load_images(self, folder):
         pass
 
-    def save_images(self, folder):
-        tifffile.imwrite(os.path.join(folder, f"{self.method_name}.tiff"), self.frames)
-        if self.reconstruction is not None:
-            tifffile.imwrite(os.path.join(folder, f"{self.method_name}_reconstruction.tiff"), self.reconstruction)
-        with open(os.path.join(folder, f"{self.method_name}_metadata.json"), 'w') as f:
-            json.dump(self.params, f)
+    def save_images(self, folder, save_raw = True, save_reconstruction = True, save_metadata = True, prefix = ""):
+        if save_raw:
+            tifffile.imwrite(os.path.join(folder, f"{prefix}{self.method_name}.tiff"), self.frames)
+        if self.reconstruction is not None and save_reconstruction:
+            tifffile.imwrite(os.path.join(folder, f"{prefix}{self.method_name}_reconstruction.tiff"), self.reconstruction)
+        if save_metadata:
+            with open(os.path.join(folder, f"{prefix}{self.method_name}_metadata.json"), 'w') as f:
+                json.dump(self.params, f)
 
     def load_images(self, folder):
         self.frames = tifffile.imread(os.path.join(folder, f"{self.method_name}.tiff"))
@@ -419,9 +421,9 @@ class SIMImaging(ImagingMethod):
 
         return reconstruct, sumall
 
-    def save_images(self, folder):
+    def save_images(self, *args, **kwargs):
         if self.sim_enabled_chb.isChecked():
-            super().save_images(folder)
+            super().save_images(*args, **kwargs)
 
     def load_images(self, folder):
         if self.sim_enabled_chb.isChecked():
@@ -580,9 +582,9 @@ class LMIImaging(ImagingMethod):
 
         return reconstruct, sumall
 
-    def save_images(self, folder):
+    def save_images(self, *args, **kwargs):
         if self.lmi_enabled_chb.isChecked():
-            super().save_images(folder)
+            super().save_images(*args, **kwargs)
 
     def load_images(self, folder):
         if self.lmi_enabled_chb.isChecked():
