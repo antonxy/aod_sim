@@ -589,3 +589,131 @@ class LMIImaging(ImagingMethod):
     def load_images(self, folder):
         if self.lmi_enabled_chb.isChecked():
             super().load_images(folder)
+
+
+class LineLMIImaging(ImagingMethod):
+    def __init__(self):
+        super().__init__("lmi")
+        lmi_group = QtWidgets.QGroupBox("Line LMI")
+        layout = QtWidgets.QFormLayout()
+
+        self.lmi_enabled_chb = QtWidgets.QCheckBox("Do Line LMI")
+        self.lmi_enabled_chb.setChecked(True)
+        layout.addRow("Do LMI", self.lmi_enabled_chb)
+
+        self.steps_txt = QtWidgets.QLineEdit("5")
+        layout.addRow("Steps", self.steps_txt)
+
+        self.multiscan_txt = QtWidgets.QLineEdit("10")
+        layout.addRow("Multiscan", self.multiscan_txt)
+
+        self.dot_distance_lbl = QtWidgets.QLabel()
+        layout.addRow("Dot distance", self.dot_distance_lbl)
+
+        self.multiscan_distance_lbl = QtWidgets.QLabel()
+        layout.addRow("Multiscan distance", self.multiscan_distance_lbl)
+
+        self.pattern_hz_txt = QtWidgets.QLineEdit("40000")
+        layout.addRow("Projection rate [Hz]", self.pattern_hz_txt)
+
+        self.exposure_lbl = QtWidgets.QLabel()
+        layout.addRow("Exposure time", self.exposure_lbl)
+
+        lmi_group.setLayout(layout)
+
+        self.parameters_widget = lmi_group
+
+        w = QtWidgets.QWidget()
+        lay = QtWidgets.QVBoxLayout()
+        self.pattern_plot = MplCanvas(self, width=5, height=4, dpi=100)
+        toolbar = NavigationToolbar(self.pattern_plot, w)
+        lay.addWidget(toolbar)
+        lay.addWidget(self.pattern_plot)
+        w.setLayout(lay)
+        self.patterns_widget = w
+
+        self.image_plot = PlotWidget()
+        self.recon_plot = PlotWidget(None, num_clim = 2)
+        self.debug_tabs = [
+            ('LMI Recorded Images', self.image_plot),
+            ('LMI Reconstructed Image', self.recon_plot),
+        ]
+
+    def parse_parameters(self):
+        return {
+            "steps": int(self.steps_txt.text()),
+            "multiscan": int(self.multiscan_txt.text()),
+            "pattern_rate_Hz": float(self.pattern_hz_txt.text()),
+        }
+
+    def load_parameters(self, params):
+        self.steps_txt.setText(str(params.get("steps", "10")))
+        self.multiscan_txt.setText(str(params.get("multiscan", "10")))
+        self.pattern_hz_txt.setText(str(params.get("pattern_rate_Hz", "10000")))
+
+    def update_patterns(self, global_params):
+        if not self.lmi_enabled_chb.isChecked():
+            return
+
+        params = {**self.parse_parameters(), **global_params}
+
+        grating_dot_distance = params['grating_dot_distance']
+        orientation_deg = params['orientation_deg']
+        distance_between_gratings = params["distance_between_gratings"]
+
+        steps = params['steps']
+        multiscan = params['multiscan']
+
+        self.pattern_rate_Hz = params['pattern_rate_Hz']
+
+        pattern_deg = lmi_pattern.line_lmi_pattern_deg(steps, multiscan, grating_dot_distance, distance_between_gratings, orientation_rad=np.deg2rad(orientation_deg))
+
+        self.exposure_time_sec = pattern_deg.shape[1] / self.pattern_rate_Hz
+        num_patterns = pattern_deg.shape[0]
+        self.exposure_lbl.setText(f"{self.exposure_time_sec * 1e3:.1f} ms * {num_patterns} = {self.exposure_time_sec * 1e3 * num_patterns:.1f} ms")
+        self.dot_distance_lbl.setText(str(grating_dot_distance / multiscan / steps))
+        self.multiscan_distance_lbl.setText(str(grating_dot_distance / multiscan))
+
+        self.pattern_plot.fig.clear()
+        ax1, ax2 = self.pattern_plot.fig.subplots(1, 2, sharex=True, sharey=True)
+        for i in range(num_patterns):
+            ax1.scatter(pattern_deg[i, :, 0], pattern_deg[i, :, 1])
+        ax2.scatter(pattern_deg[0, :, 0], pattern_deg[0, :, 1])
+        ax1.set_aspect(1)
+        ax2.set_aspect(1)
+        self.pattern_plot.draw()
+
+        self.pattern_deg = pattern_deg
+        self.params = params
+
+
+    def take_images(self, system):
+        if not self.lmi_enabled_chb.isChecked():
+            return
+        self.frames = system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz, self.params['pattern_delay_sec'])
+        self.reconstruction = None
+        self.plot_images()
+
+    def plot_images(self):
+        self.image_plot.plot.fig.clear()
+        axs = self.image_plot.plot.fig.subplots(3, 3, sharex=True, sharey=True)
+        ims = []
+        frames_per_grating = int(len(self.frames) / 3)
+        for i in range(3):
+            for j in range(3):
+                ims.append(axs[i, j].imshow(self.frames[i * frames_per_grating + j]))
+        self.image_plot.connect_clim(ims)
+        self.image_plot.plot.draw()
+
+    def reconstruct(self):
+        if not self.lmi_enabled_chb.isChecked():
+            return None, None
+        pass
+
+    def save_images(self, *args, **kwargs):
+        if self.lmi_enabled_chb.isChecked():
+            super().save_images(*args, **kwargs)
+
+    def load_images(self, folder):
+        if self.lmi_enabled_chb.isChecked():
+            super().load_images(folder)

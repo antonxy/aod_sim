@@ -29,3 +29,31 @@ def lmi_pattern_deg(steps_x, steps_y, multiscan_x, multiscan_y, distance_x, dist
     positions_shifted = np.dot(positions_shifted, R.T)
 
     return positions_shifted
+
+def line_lmi_pattern_deg(steps, multiscan, grating_dot_distance, distance_between_gratings, orientation_rad=0.0):
+
+    patterns = []
+    for grating_orientation_deg in [0, 120, 240]:
+        # multiscan
+        positions = np.linspace(0, grating_dot_distance, multiscan, endpoint=False)
+
+        # Center positions around grating
+        grating_y_offset = 0.5*distance_between_gratings / np.sin(np.deg2rad(60))
+        positions = positions - np.mean(positions) + grating_y_offset
+
+        # Shift
+        shift_positions = np.linspace(0, grating_dot_distance / multiscan, steps, endpoint=False)
+        positions_shifted = positions[np.newaxis, :] + shift_positions[:, np.newaxis]
+
+        # Add x coordinate (= 0)
+        positions_with_x = np.zeros(positions_shifted.shape + (2, ))
+        positions_with_x[:, :, 1] = positions_shifted
+
+        # Apply orientation
+        orientation_rad_rot = orientation_rad + np.deg2rad(grating_orientation_deg)
+        c, s = np.cos(orientation_rad_rot), np.sin(orientation_rad_rot)
+        R = np.array(((c, -s), (s, c)))
+        positions_rotated = np.dot(positions_with_x, R.T)
+        patterns.append(positions_rotated)
+
+    return np.concatenate(patterns, axis=0)
