@@ -11,6 +11,7 @@ from datetime import datetime
 import re
 import argparse
 import json
+from measure_line_gratings import MeasureLineGratingsDialog
 
 from widgets import PlotWidget
 
@@ -118,6 +119,10 @@ class MainWindow(QtWidgets.QMainWindow):
         update_pattern_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_P))
         update_pattern_action.triggered.connect(self.create_patterns)
         patternMenu.addAction(update_pattern_action)
+
+        measure_grating_action = QtWidgets.QAction("Measure &Grating", self)
+        measure_grating_action.triggered.connect(self.measure_grating)
+        patternMenu.addAction(measure_grating_action)
 
         imageMenu = self.menuBar().addMenu("&Image")
         take_images_action = QtWidgets.QAction("Take &Images", self)
@@ -250,10 +255,11 @@ class MainWindow(QtWidgets.QMainWindow):
              self.recording_name_txt.text())
         self.recording_name_txt.setText(res)
 
-    def record_slide(self):
-        self.project_zero_pattern_loop()
-        self.take_images()
-        self.reconstruct_image()
+    def measure_grating(self):
+        params = MeasureLineGratingsDialog.run_dialog(self.sim_system, self.parse_global_params(), self)
+        if params is not None:
+            for txt, val in zip(self.grating_dot_distance_txts, params["grating_dot_distances"]):
+                txt.setText(str(val))
 
     def save_images(self):
         folder = self.output_folder_txt.text()
