@@ -37,6 +37,8 @@ class MeasureLineGratingsDialog(QtWidgets.QDialog):
         layout.addLayout(form_layout)
 
         hlayout = QtWidgets.QHBoxLayout()
+        do_nothing_button = QtWidgets.QPushButton('---')
+        hlayout.addWidget(do_nothing_button)
         ok_button = QtWidgets.QPushButton('OK')
         ok_button.pressed.connect(self.accept)
         hlayout.addWidget(ok_button)

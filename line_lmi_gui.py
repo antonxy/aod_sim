@@ -120,6 +120,10 @@ class MainWindow(QtWidgets.QMainWindow):
         update_pattern_action.triggered.connect(self.create_patterns)
         patternMenu.addAction(update_pattern_action)
 
+        project_pattern_loop_action = QtWidgets.QAction("Project &Pattern", self)
+        project_pattern_loop_action.triggered.connect(self.project_pattern_loop)
+        patternMenu.addAction(project_pattern_loop_action)
+
         measure_grating_action = QtWidgets.QAction("Measure &Grating", self)
         measure_grating_action.triggered.connect(self.measure_grating)
         patternMenu.addAction(measure_grating_action)
@@ -278,6 +282,18 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def reconstruct_image(self):
         pass
+
+    def project_pattern_loop(self):
+        self.create_patterns()
+        run_event = threading.Event()
+        run_event.set()
+        thread = threading.Thread(target = self.sim_system.project_patterns_looping, args = (self.sim_imaging.pattern_deg, self.sim_imaging.pattern_rate_Hz, run_event))
+        thread.start()
+        msgBox = QtWidgets.QMessageBox()
+        msgBox.setText("Projecting pattern. Close dialog to stop")
+        msgBox.exec()
+        run_event.clear()
+        thread.join()
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication([])
