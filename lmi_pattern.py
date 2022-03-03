@@ -30,10 +30,10 @@ def lmi_pattern_deg(steps_x, steps_y, multiscan_x, multiscan_y, distance_x, dist
 
     return positions_shifted
 
-def line_lmi_pattern_deg(steps, multiscan, grating_dot_distance, distance_between_gratings, orientation_rad=0.0):
+def line_lmi_pattern_deg(steps, multiscan, grating_dot_distances, distance_between_gratings, orientation_rad=0.0):
 
     patterns = []
-    for grating_orientation_deg in [0, 120, 240]:
+    for grating_orientation_deg, grating_dot_distance in zip([0, 120, 240], grating_dot_distances):
         # multiscan
         positions = np.linspace(0, grating_dot_distance, multiscan, endpoint=False)
 

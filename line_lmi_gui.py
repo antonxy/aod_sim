@@ -62,8 +62,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.orientation_deg_txt = QtWidgets.QLineEdit("0")
         layout.addRow("Orientation [deg]", self.orientation_deg_txt)
 
-        self.grating_dot_distance_txt = QtWidgets.QLineEdit("0.5")
-        layout.addRow("Grating dot distance [deg]", self.grating_dot_distance_txt)
+        self.grating_dot_distance_1_txt = QtWidgets.QLineEdit("0.5")
+        layout.addRow("Grating dot distance 1 [deg]", self.grating_dot_distance_1_txt)
+
+        self.grating_dot_distance_2_txt = QtWidgets.QLineEdit("0.5")
+        layout.addRow("Grating dot distance 2 [deg]", self.grating_dot_distance_2_txt)
+
+        self.grating_dot_distance_3_txt = QtWidgets.QLineEdit("0.5")
+        layout.addRow("Grating dot distance 3 [deg]", self.grating_dot_distance_3_txt)
+        self.grating_dot_distance_txts = [
+            self.grating_dot_distance_1_txt,
+            self.grating_dot_distance_2_txt,
+            self.grating_dot_distance_3_txt
+        ]
 
         self.distance_between_gratings_txt = QtWidgets.QLineEdit("1")
         layout.addRow("Distance between gratings [deg]", self.distance_between_gratings_txt)
@@ -168,7 +179,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def parse_global_params(self):
         return {
-            "grating_dot_distance": float(self.grating_dot_distance_txt.text()),
+            "grating_dot_distances": [float(txt.text()) for txt in self.grating_dot_distance_txts],
             "orientation_deg": float(self.orientation_deg_txt.text()),
             "distance_between_gratings": float(self.distance_between_gratings_txt.text()),
             "pattern_delay_sec": float(self.pattern_delay_txt.text()),
@@ -208,7 +219,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.output_folder_txt.setText(global_params.get("output_folder", "../recordings"))
         self.recording_name_txt.setText(global_params.get("recording_name", "rec001"))
 
-        self.grating_dot_distance_txt.setText(str(global_params.get("grating_dot_distance", "0.27")))
+        for txt, val in zip(self.grating_dot_distance_txts, global_params.get("grating_dot_distances", [0.27] * 3)):
+            txt.setText(str(val))
         self.orientation_deg_txt.setText(str(global_params.get("orientation_deg", "0")))
         self.distance_between_gratings_txt.setText(str(global_params.get("distance_between_gratings", "1")))
         self.pattern_delay_txt.setText(str(global_params.get("pattern_delay_sec", "0")))

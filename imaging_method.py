@@ -657,7 +657,7 @@ class LineLMIImaging(ImagingMethod):
 
         params = {**self.parse_parameters(), **global_params}
 
-        grating_dot_distance = params['grating_dot_distance']
+        grating_dot_distances = params['grating_dot_distances']
         orientation_deg = params['orientation_deg']
         distance_between_gratings = params["distance_between_gratings"]
 
@@ -666,13 +666,13 @@ class LineLMIImaging(ImagingMethod):
 
         self.pattern_rate_Hz = params['pattern_rate_Hz']
 
-        pattern_deg = lmi_pattern.line_lmi_pattern_deg(steps, multiscan, grating_dot_distance, distance_between_gratings, orientation_rad=np.deg2rad(orientation_deg))
+        pattern_deg = lmi_pattern.line_lmi_pattern_deg(steps, multiscan, grating_dot_distances, distance_between_gratings, orientation_rad=np.deg2rad(orientation_deg))
 
         self.exposure_time_sec = pattern_deg.shape[1] / self.pattern_rate_Hz
         num_patterns = pattern_deg.shape[0]
         self.exposure_lbl.setText(f"{self.exposure_time_sec * 1e3:.1f} ms * {num_patterns} = {self.exposure_time_sec * 1e3 * num_patterns:.1f} ms")
-        self.dot_distance_lbl.setText(str(grating_dot_distance / multiscan / steps))
-        self.multiscan_distance_lbl.setText(str(grating_dot_distance / multiscan))
+        self.dot_distance_lbl.setText(str([grating_dot_distance / multiscan / steps for grating_dot_distance in grating_dot_distances]))
+        self.multiscan_distance_lbl.setText(str([grating_dot_distance / multiscan for grating_dot_distance in grating_dot_distances]))
 
         self.pattern_plot.fig.clear()
         ax1, ax2 = self.pattern_plot.fig.subplots(1, 2, sharex=True, sharey=True)
