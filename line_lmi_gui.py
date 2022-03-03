@@ -65,8 +65,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.grating_dot_distance_txt = QtWidgets.QLineEdit("0.5")
         layout.addRow("Grating dot distance [deg]", self.grating_dot_distance_txt)
 
-        self.distance_between_gratings_txt = QtWidgets.QLineEdit("9")
-        layout.addRow("Distance between gratings [mm]", self.distance_between_gratings_txt)
+        self.distance_between_gratings_txt = QtWidgets.QLineEdit("1")
+        layout.addRow("Distance between gratings [deg]", self.distance_between_gratings_txt)
 
         optical_group.setLayout(layout)
 
@@ -210,7 +210,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.grating_dot_distance_txt.setText(str(global_params.get("grating_dot_distance", "0.27")))
         self.orientation_deg_txt.setText(str(global_params.get("orientation_deg", "0")))
-        self.distance_between_gratings_txt.setText(str(global_params.get("distance_between_gratings", "9")))
+        self.distance_between_gratings_txt.setText(str(global_params.get("distance_between_gratings", "1")))
         self.pattern_delay_txt.setText(str(global_params.get("pattern_delay_sec", "0")))
         self.image_notes_txt.setText(global_params.get("recording_notes", ""))
 
