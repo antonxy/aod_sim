@@ -22,6 +22,7 @@ def time_to_timebase(time_sec):
 def cam_set_delay_exposure_time(cam, delay_sec, exposure_sec):
     del_time, del_timebase = time_to_timebase(delay_sec)
     exp_time, exp_timebase = time_to_timebase(exposure_sec)
+    print(f"Set delay {del_time} {del_timebase}, exposure {exp_time} {exp_timebase}")
     cam.sdk.set_delay_exposure_time(del_time, del_timebase, exp_time, exp_timebase)
 
 
@@ -31,7 +32,7 @@ def pattern_insert_delay(pattern, pattern_rate_Hz, delay_sec):
     # We can only insert positive delay. Insert a bit more if it doesn't fit exactly,
     # we can then adjust using camera delay in the other direction.
     num_steps = max(0, math.ceil(delay_sec * pattern_rate_Hz))
-    actual_delay = num_steps * pattern_rate_Hz
+    actual_delay = num_steps / pattern_rate_Hz
     first_sample = pattern[:, 0, :]
     repeat_sample = np.tile(first_sample[:, np.newaxis, :], (1, num_steps, 1))
     return np.concatenate([repeat_sample, pattern], axis = 1), actual_delay
@@ -60,6 +61,7 @@ class SIMHardwareSystem:
 
     def configure_camera(self, exposure_time_sec, delay_sec = 0.0):
         if exposure_time_sec != self.camera_exposure or delay_sec != self.camera_delay:
+            print(f"Set delay {delay_sec} sec, exposure {exposure_time_sec} sec")
             cam_set_delay_exposure_time(self.camera, delay_sec, exposure_time_sec)
             self.camera_exposure = exposure_time_sec
             self.delay_sec = delay_sec
@@ -69,8 +71,12 @@ class SIMHardwareSystem:
 
         # Since we can only insert fixed steps of delay into the pattern we have
         # to adjust using camera delay after
+        print(f"Desired pattern delay {delay_sec} sec")
         patterns_deg_delay, pattern_delay_sec = pattern_insert_delay(patterns_deg, pattern_rate_Hz, delay_sec)
-        self.configure_camera(exposure_time_sec, delay_sec = pattern_delay_sec - delay_sec)
+        print(f"Inserted pattern delay {pattern_delay_sec} sec")
+        camera_delay_sec = pattern_delay_sec - delay_sec
+        print(f"Camera delay {camera_delay_sec} sec")
+        self.configure_camera(exposure_time_sec, delay_sec = camera_delay_sec)
 
         self.camera.record(number_of_images=patterns_deg.shape[0], mode='sequence non blocking')
 
