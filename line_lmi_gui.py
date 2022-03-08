@@ -287,7 +287,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.create_patterns()
         run_event = threading.Event()
         run_event.set()
-        thread = threading.Thread(target = self.sim_system.project_patterns_looping, args = (self.sim_imaging.pattern_deg, self.sim_imaging.pattern_rate_Hz, run_event))
+        thread = threading.Thread(target = self.sim_system.project_patterns_looping, args = (self.line_lmi_imaging.pattern_deg, self.line_lmi_imaging.pattern_rate_Hz, run_event))
         thread.start()
         msgBox = QtWidgets.QMessageBox()
         msgBox.setText("Projecting pattern. Close dialog to stop")
