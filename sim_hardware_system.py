@@ -69,11 +69,6 @@ class SIMHardwareSystem:
             self.camera_exposure = exposure_time_sec
             self.delay_sec = delay_sec
 
-        if self.multi_frame_acquire and num_frames != self.multi_frame_num:
-            self.camera.sdk.set_acquire_mode_ex('sequence trigger', num_frames)
-            self.camera.sdk.arm_camera()
-            self.multi_frame_num = num_frames
-
     def project_patterns_and_take_images(self, patterns_deg, pattern_rate_Hz, delay_sec):
         exposure_time_sec = patterns_deg.shape[1] / pattern_rate_Hz
         num_frames = patterns_deg.shape[0]
@@ -92,9 +87,13 @@ class SIMHardwareSystem:
             # Project all patterns without trigger inbetween
             patterns_deg_delay = patterns_deg_delay.reshape(1, -1, 2)
 
+        # Start recording. Camera is in trigger mode and will wait for the NI card to start sending the pattern.
         self.camera.record(number_of_images=num_frames, mode='sequence non blocking')
 
-        nidaq_pattern.project_patterns(patterns_deg_delay, pattern_rate_Hz)
+        # Play pattern on the NI card.
+        # If we are in multi frame mode send out clock instead of start trigger.
+        # This way the camera can record multiple frames, but if the timing is not totally correct AOD and camera might drift apart.
+        nidaq_pattern.project_patterns(patterns_deg_delay, pattern_rate_Hz, export_clock = self.multi_frame_acquire)
 
         # Wait for camera to finish
         t_start = time.time()

@@ -27,7 +27,7 @@ def frequency_MHz_to_bin(x, y):
     return (((1 << 15 | x_int) << 16) | (1 << 15 | y_int)).astype(np.uint32)
 
 
-def project_patterns(patterns_degree, rate, reset_when_done = True, loop = False, loop_event = None):
+def project_patterns(patterns_degree, rate, reset_when_done = True, loop = False, loop_event = None, export_clock = False):
     # patterns_degree dimensions: [pattern, sample in pattern, axis (x,y)]
     if len(patterns_degree.shape) == 2:
         patterns_degree = patterns_degree[np.newaxis, :, :]
@@ -58,7 +58,10 @@ def project_patterns(patterns_degree, rate, reset_when_done = True, loop = False
                 with nidaqmx.Task() as task:
                     task.do_channels.add_do_chan('Dev1/port0:Dev1/port3', line_grouping=nidaqmx.constants.LineGrouping.CHAN_FOR_ALL_LINES)
                     task.timing.cfg_samp_clk_timing(rate=rate, sample_mode=nidaqmx.constants.AcquisitionType.FINITE, samps_per_chan=num_samples)
-                    task.export_signals.export_signal(nidaqmx.constants.Signal.START_TRIGGER, '/Dev1/PFI4')
+                    if export_clock:
+                        task.export_signals.export_signal(nidaqmx.constants.Signal.SAMPLE_CLOCK, '/Dev1/PFI4')
+                    else:
+                        task.export_signals.export_signal(nidaqmx.constants.Signal.START_TRIGGER, '/Dev1/PFI4')
                     task.write(scan[pattern_nr], auto_start=True)
                     task.wait_until_done()
             first = False
