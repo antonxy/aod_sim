@@ -606,6 +606,9 @@ class LineLMIImaging(ImagingMethod):
 
         self.multiscan_txt = QtWidgets.QLineEdit("10")
         layout.addRow("Multiscan", self.multiscan_txt)
+        
+        self.pattern_repeat_txt = QtWidgets.QLineEdit("1")
+        layout.addRow("Pattern repeat", self.pattern_repeat_txt)
 
         self.dot_distance_lbl = QtWidgets.QLabel()
         layout.addRow("Dot distance", self.dot_distance_lbl)
@@ -643,12 +646,14 @@ class LineLMIImaging(ImagingMethod):
         return {
             "steps": int(self.steps_txt.text()),
             "multiscan": int(self.multiscan_txt.text()),
+            "pattern_repeat": int(self.pattern_repeat_txt.text()),
             "pattern_rate_Hz": float(self.pattern_hz_txt.text()),
         }
 
     def load_parameters(self, params):
         self.steps_txt.setText(str(params.get("steps", "10")))
         self.multiscan_txt.setText(str(params.get("multiscan", "10")))
+        self.pattern_repeat_txt.setText(str(params.get("pattern_repeat", "1")))
         self.pattern_hz_txt.setText(str(params.get("pattern_rate_Hz", "10000")))
 
     def update_patterns(self, global_params):
@@ -663,10 +668,12 @@ class LineLMIImaging(ImagingMethod):
 
         steps = params['steps']
         multiscan = params['multiscan']
+        pattern_repeat = params['pattern_repeat']
 
         self.pattern_rate_Hz = params['pattern_rate_Hz']
 
         pattern_deg = lmi_pattern.line_lmi_pattern_deg(steps, multiscan, grating_dot_distances, distance_between_gratings, orientation_rad=np.deg2rad(orientation_deg))
+        pattern_deg = np.tile(pattern_deg, [1, pattern_repeat, 1])
 
         self.exposure_time_sec = pattern_deg.shape[1] / self.pattern_rate_Hz
         num_patterns = pattern_deg.shape[0]
