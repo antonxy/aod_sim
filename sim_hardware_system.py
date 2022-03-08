@@ -43,6 +43,9 @@ class SIMHardwareSystem:
         self.camera_exposure = -1;
         self.camera_delay = -1;
 
+        self.multi_frame_acquire = False
+        self.multi_frame_num = 0
+
     def connect(self):
         self.camera = pco.Camera(debuglevel='error', interface="Camera Link Silicon Software")
         self.camera.default_configuration()
@@ -59,15 +62,21 @@ class SIMHardwareSystem:
         self.camera.close()
         self.camera = None
 
-    def configure_camera(self, exposure_time_sec, delay_sec = 0.0):
+    def configure_camera(self, exposure_time_sec, delay_sec = 0.0, num_frames = 0):
         if exposure_time_sec != self.camera_exposure or delay_sec != self.camera_delay:
             print(f"Set delay {delay_sec} sec, exposure {exposure_time_sec} sec")
             cam_set_delay_exposure_time(self.camera, delay_sec, exposure_time_sec)
             self.camera_exposure = exposure_time_sec
             self.delay_sec = delay_sec
 
+        if self.multi_frame_acquire and num_frames != self.multi_frame_num:
+            self.camera.sdk.set_acquire_mode_ex('sequence trigger', num_frames)
+            self.camera.sdk.arm_camera()
+            self.multi_frame_num = num_frames
+
     def project_patterns_and_take_images(self, patterns_deg, pattern_rate_Hz, delay_sec):
         exposure_time_sec = patterns_deg.shape[1] / pattern_rate_Hz
+        num_frames = patterns_deg.shape[0]
 
         # Since we can only insert fixed steps of delay into the pattern we have
         # to adjust using camera delay after
@@ -76,11 +85,18 @@ class SIMHardwareSystem:
         print(f"Inserted pattern delay {pattern_delay_sec} sec")
         camera_delay_sec = pattern_delay_sec - delay_sec
         print(f"Camera delay {camera_delay_sec} sec")
-        self.configure_camera(exposure_time_sec, delay_sec = camera_delay_sec)
 
-        self.camera.record(number_of_images=patterns_deg.shape[0], mode='sequence non blocking')
+        self.configure_camera(exposure_time_sec, delay_sec = camera_delay_sec, num_frames = num_frames)
+
+        if self.multi_frame_acquire:
+            # Project all patterns without trigger inbetween
+            patterns_deg_delay = patterns_deg_delay.reshape(1, -1, 2)
+
+        self.camera.record(number_of_images=num_frames, mode='sequence non blocking')
 
         nidaq_pattern.project_patterns(patterns_deg_delay, pattern_rate_Hz)
+
+        # Wait for camera to finish
         t_start = time.time()
         while True:
             running = self.camera.rec.get_status()['is running']
