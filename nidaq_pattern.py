@@ -1,6 +1,7 @@
 import nidaqmx
 import numpy as np
 import threading
+import time
 
 def angle_deg_to_frequency_MHz(angle_deg):
     angleRange = 2.29183  # 40 mrad  Maximum angle possible by AOD
@@ -9,7 +10,7 @@ def angle_deg_to_frequency_MHz(angle_deg):
 
     freq_MHz = F_central + ((angle_deg / (angleRange / 2)) * (bandWidth / 2))
 
-    bandWidthCheck = 40  # Could be increased to 50 but set to 25 for now just to be safe
+    bandWidthCheck = 50  # Could be increased to 50 but set to 25 for now just to be safe
     F_max = F_central + bandWidthCheck/2  # Maximum scanning frequency. The central frequency can be optimized so that the diffraction efficiency is similar within the scanning range
     F_min = F_central - bandWidthCheck/2  # Minimum scanning frequency
     assert((freq_MHz <= F_max).all())
@@ -63,7 +64,9 @@ def project_patterns(patterns_degree, rate, reset_when_done = True, loop = False
                     else:
                         task.export_signals.export_signal(nidaqmx.constants.Signal.START_TRIGGER, '/Dev1/PFI4')
                     task.write(scan[pattern_nr], auto_start=True)
-                    task.wait_until_done()
+                    task.wait_until_done(timeout=num_samples/rate + 10)
+                    # Between pattern delay
+                    #time.sleep(0.001)
             first = False
     except KeyboardInterrupt:
         pass

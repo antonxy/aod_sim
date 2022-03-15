@@ -43,7 +43,7 @@ class SIMHardwareSystem:
         self.camera_exposure = -1;
         self.camera_delay = -1;
 
-        self.multi_frame_acquire = False
+        self.multi_frame_acquire = True
         self.multi_frame_num = 0
 
     def connect(self):
@@ -81,11 +81,21 @@ class SIMHardwareSystem:
         camera_delay_sec = pattern_delay_sec - delay_sec
         print(f"Camera delay {camera_delay_sec} sec")
 
-        self.configure_camera(exposure_time_sec, delay_sec = camera_delay_sec, num_frames = num_frames)
+        quater_sample = 0.25 / pattern_rate_Hz
+        self.configure_camera(exposure_time_sec - quater_sample, delay_sec = camera_delay_sec, num_frames = num_frames)
 
         if self.multi_frame_acquire:
             # Project all patterns without trigger inbetween
             patterns_deg_delay = patterns_deg_delay.reshape(1, -1, 2)
+            
+            # Somehow the camera needs to get some extra triggers after the desired number of frames
+            # Otherwise only e.g. 4 of 9 frames are in the recorder even though oscilloscope shows that
+            # 9 frames have been recorded and the 9 frames can also be seen in camware.
+            # Very weird..., but thats what this is for
+            # ! But it still doesn't work. Now 9 frames are recorded but they are not the first 9 frames,
+            # but some random(?) 9 frames of more of them. Is the recorder dropping frames when
+            # recording too fast?
+            #patterns_deg_delay = np.concatenate([patterns_deg_delay, np.zeros((1, 1000, 2))], axis=1)
 
         # Start recording. Camera is in trigger mode and will wait for the NI card to start sending the pattern.
         self.camera.record(number_of_images=num_frames, mode='sequence non blocking')
@@ -101,12 +111,15 @@ class SIMHardwareSystem:
             running = self.camera.rec.get_status()['is running']
             if not running:
                 break
-            if (time.time() - t_start) - 2 > exposure_time_sec * patterns_deg.shape[0]:
+            if (time.time() - t_start) - 0.1 > exposure_time_sec * num_frames:
                 self.camera.stop()
-                raise RuntimeError("Camera took too long, probably trigger was lost")
+                #raise RuntimeError("Camera took too long, probably trigger was lost")
             time.sleep(0.001)
 
+        print("Num images in camera " , self.camera.rec.get_status())
         images, metadatas = self.camera.images()
+        if len(images) != num_frames:
+            raise RuntimeError("Wrong number of images")
         return np.stack(images)
 
     def take_widefield_image(self):
