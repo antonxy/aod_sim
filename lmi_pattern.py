@@ -57,3 +57,45 @@ def line_lmi_pattern_deg(steps, multiscan, grating_dot_distances, distance_betwe
         patterns.append(positions_rotated)
 
     return np.concatenate(patterns, axis=0)
+
+def line_lmi_pattern_deg_general(steps, multiscan, grating_dot_distances, center_points, orientations_deg):
+    patterns = []
+    for grating_center_pos, grating_orientation_deg, grating_dot_distance in zip(center_points, orientations_deg, grating_dot_distances):
+        # multiscan
+        positions = np.linspace(0, grating_dot_distance, multiscan, endpoint=False)
+
+        # Shift
+        shift_positions = np.linspace(0, grating_dot_distance / multiscan, steps, endpoint=False)
+        positions_shifted = positions[np.newaxis, :] + shift_positions[:, np.newaxis]
+
+        # Center around 0
+        positions_shifted -= np.mean(positions_shifted)
+
+        # Add x coordinate (= 0)
+        positions_with_x = np.zeros(positions_shifted.shape + (2, ))
+        positions_with_x[:, :, 1] = positions_shifted
+
+        # Apply orientation
+        orientation_rad_rot = np.deg2rad(grating_orientation_deg)
+        c, s = np.cos(orientation_rad_rot), np.sin(orientation_rad_rot)
+        R = np.array(((c, -s), (s, c)))
+        positions_rotated = np.dot(positions_with_x, R.T)
+
+        # Add center position
+        positions_rotated += grating_center_pos[np.newaxis, np.newaxis, :]
+
+        patterns.append(positions_rotated)
+
+    return np.concatenate(patterns, axis=0)
+
+def line_lmi_pattern_two_grating(steps, multiscan, grating_dot_distances, distance_between_gratings, orientation_deg):
+    center_points = np.array([[-distance_between_gratings / 2, 0], [distance_between_gratings / 2, 0]])
+    # Apply orientation
+    orientation_rad_rot = np.deg2rad(orientation_deg)
+    c, s = np.cos(orientation_rad_rot), np.sin(orientation_rad_rot)
+    R = np.array(((c, -s), (s, c)))
+    center_points = np.dot(center_points, R.T)
+
+    orientations = np.array([0, 90]) + orientation_deg
+
+    return line_lmi_pattern_deg_general(steps, multiscan, grating_dot_distances, center_points, orientations)
