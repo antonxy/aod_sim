@@ -1,4 +1,3 @@
-import nidaqmx
 import numpy as np
 import threading
 import time
@@ -28,7 +27,21 @@ def frequency_MHz_to_bin(x, y):
     return (((1 << 15 | x_int) << 16) | (1 << 15 | y_int)).astype(np.uint32)
 
 
+def save_pattern_as_csv(pattern, filename):
+    pattern = pattern.reshape(-1, 2)
+    scan_angle_x = angle_deg_to_frequency_MHz(pattern[:, 0])
+    scan_angle_y = angle_deg_to_frequency_MHz(pattern[:, 1])
+    scan = frequency_MHz_to_bin(scan_angle_x, scan_angle_y)
+
+    with open(filename, 'w') as f:
+        for i in range(pattern.shape[0]):
+            binary = np.binary_repr(scan[i], width=32)
+            assert(len(binary) == 32)
+            print(';'.join(binary), file=f)
+
+
 def project_patterns(patterns_degree, rate, reset_when_done = True, loop = False, loop_event = None, export_clock = False):
+    import nidaqmx
     # patterns_degree dimensions: [pattern, sample in pattern, axis (x,y)]
     if len(patterns_degree.shape) == 2:
         patterns_degree = patterns_degree[np.newaxis, :, :]
@@ -76,6 +89,7 @@ def project_patterns(patterns_degree, rate, reset_when_done = True, loop = False
 
 
 def reset_daq():
+    import nidaqmx
     sys = nidaqmx.system.System.local()
     dev = sys.devices['Dev1']
     dev.reset_device()

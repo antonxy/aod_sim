@@ -17,6 +17,7 @@ from widgets import PlotWidget
 
 import sys
 import imaging_method
+import nidaq_pattern
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--folder')
@@ -128,6 +129,10 @@ class MainWindow(QtWidgets.QMainWindow):
         measure_grating_action.triggered.connect(self.measure_grating)
         patternMenu.addAction(measure_grating_action)
 
+        save_pattern_action = QtWidgets.QAction("&Save Pattern", self)
+        save_pattern_action.triggered.connect(self.save_pattern)
+        patternMenu.addAction(save_pattern_action)
+
         imageMenu = self.menuBar().addMenu("&Image")
         take_images_action = QtWidgets.QAction("Take &Images", self)
         take_images_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_Return))
@@ -236,6 +241,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.image_notes_txt.setText(global_params.get("recording_notes", ""))
 
         self.line_lmi_imaging.load_parameters(params.get("line_lmi", {}))
+
+    def save_pattern(self, *args, file = None):
+        if file is None:
+            file = QtWidgets.QFileDialog.getSaveFileName(self, "Save pattern", filter="CSV (*.csv)")[0]
+        if file is not None and file != "":
+            nidaq_pattern.save_pattern_as_csv(self.line_lmi_imaging.pattern_deg, file)
 
     def create_patterns(self):
         self.line_lmi_imaging.update_patterns(global_params = self.parse_global_params())
