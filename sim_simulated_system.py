@@ -144,3 +144,8 @@ class SIMSimulatedSystem:
         while run_event.is_set():
             print("Project")
             time.sleep(1)
+
+    def project_patterns_video(self, patterns_deg, pattern_rate_Hz, run_event):
+        while run_event.is_set():
+            print("Project")
+            time.sleep(1)

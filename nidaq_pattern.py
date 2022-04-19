@@ -77,7 +77,18 @@ def project_patterns(patterns_degree, rate, reset_when_done = True, loop = False
                     else:
                         task.export_signals.export_signal(nidaqmx.constants.Signal.START_TRIGGER, '/Dev1/PFI4')
                     task.write(scan[pattern_nr], auto_start=True)
-                    task.wait_until_done(timeout=num_samples/rate + 10)
+
+                    # Wait until task done or loop_event is set
+                    done = False
+                    while not done:
+                        try:
+                            task.wait_until_done(timeout=1.0)
+                            done = True
+                        except:
+                            pass
+                        if loop_event.is_set():
+                            done = True
+
                     # Between pattern delay
                     #time.sleep(0.001)
             first = False

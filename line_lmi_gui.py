@@ -81,6 +81,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.distance_between_gratings_txt = QtWidgets.QLineEdit("1")
         layout.addRow("Distance between gratings [deg]", self.distance_between_gratings_txt)
 
+        self.capture_repeats_txt = QtWidgets.QLineEdit("1000")
+        layout.addRow("Capture repeats", self.capture_repeats_txt)
+
         optical_group.setLayout(layout)
 
 
@@ -227,6 +230,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return {
             "output_folder": self.output_folder_txt.text(),
             "recording_name": self.recording_name_txt.text(),
+            "capture_repeats": int(self.capture_repeats_txt.text()),
         }
 
     def save_settings_action(self, *args, file = None):
@@ -257,6 +261,8 @@ class MainWindow(QtWidgets.QMainWindow):
             txt.setText(str(val))
         self.orientation_deg_txt.setText(str(global_params.get("orientation_deg", "0")))
         self.distance_between_gratings_txt.setText(str(global_params.get("distance_between_gratings", "1")))
+        self.capture_repeats_txt.setText(str(global_params.get("capture_repeats", "1000")))
+
         self.pattern_delay_txt.setText(str(global_params.get("pattern_delay_sec", "0")))
         self.image_notes_txt.setText(global_params.get("recording_notes", ""))
 
@@ -325,17 +331,18 @@ class MainWindow(QtWidgets.QMainWindow):
         msgBox.exec()
         run_event.clear()
         thread.join()
-        
+
     def project_pattern_loopv(self):
+        capture_repeats = int(self.capture_repeats_txt.text())
         self.create_patterns()
         run_event = threading.Event()
         run_event.set()
         pattern = self.line_lmi_imaging.pattern_deg.reshape(-1, 2)
-        pattern = np.tile(pattern, [100, 1])
+        pattern = np.tile(pattern, [capture_repeats, 1])
         thread = threading.Thread(target = self.sim_system.project_patterns_video, args = (pattern, self.line_lmi_imaging.pattern_rate_Hz, run_event))
         thread.start()
         msgBox = QtWidgets.QMessageBox()
-        msgBox.setText("Projecting pattern. Close dialog to stop")
+        msgBox.setText(f"Projecting pattern {capture_repeats} times. Close dialog to stop")
         msgBox.exec()
         run_event.clear()
         thread.join()
