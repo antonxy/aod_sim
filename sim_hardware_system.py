@@ -130,3 +130,7 @@ class SIMHardwareSystem:
 
     def project_patterns_looping(self, patterns_deg, pattern_rate_Hz, run_event):
         nidaq_pattern.project_patterns(patterns_deg, pattern_rate_Hz, loop=True, loop_event = run_event)
+
+
+    def project_patterns_video(self, patterns_deg, pattern_rate_Hz, run_event):
+        nidaq_pattern.project_patterns(patterns_deg, pattern_rate_Hz, loop=False, loop_event = run_event, export_clock = True)

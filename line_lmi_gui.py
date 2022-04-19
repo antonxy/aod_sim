@@ -128,6 +128,10 @@ class MainWindow(QtWidgets.QMainWindow):
         project_pattern_loop_action = QtWidgets.QAction("Project &Pattern", self)
         project_pattern_loop_action.triggered.connect(self.project_pattern_loop)
         patternMenu.addAction(project_pattern_loop_action)
+        
+        project_pattern_loopv_action = QtWidgets.QAction("Project Pattern &Video", self)
+        project_pattern_loopv_action.triggered.connect(self.project_pattern_loopv)
+        patternMenu.addAction(project_pattern_loopv_action)
 
         measure_grating_action = QtWidgets.QAction("Measure &Grating", self)
         measure_grating_action.triggered.connect(self.measure_grating)
@@ -315,6 +319,20 @@ class MainWindow(QtWidgets.QMainWindow):
         run_event = threading.Event()
         run_event.set()
         thread = threading.Thread(target = self.sim_system.project_patterns_looping, args = (self.line_lmi_imaging.pattern_deg, self.line_lmi_imaging.pattern_rate_Hz, run_event))
+        thread.start()
+        msgBox = QtWidgets.QMessageBox()
+        msgBox.setText("Projecting pattern. Close dialog to stop")
+        msgBox.exec()
+        run_event.clear()
+        thread.join()
+        
+    def project_pattern_loopv(self):
+        self.create_patterns()
+        run_event = threading.Event()
+        run_event.set()
+        pattern = self.line_lmi_imaging.pattern_deg.reshape(-1, 2)
+        pattern = np.tile(pattern, [100, 1])
+        thread = threading.Thread(target = self.sim_system.project_patterns_video, args = (pattern, self.line_lmi_imaging.pattern_rate_Hz, run_event))
         thread.start()
         msgBox = QtWidgets.QMessageBox()
         msgBox.setText("Projecting pattern. Close dialog to stop")
