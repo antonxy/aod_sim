@@ -30,8 +30,10 @@ class Stage(object):
         self.serial = serial
         self.device = None
 
-    def init(self):
+    def connect(self):
+        DeviceManagerCLI.BuildDeviceList()
         self.device = TCubeDCServo.CreateTCubeDCServo(self.serial)
+        print(self.device)
         self.device.Connect(self.serial)
         deviceInfo = self.device.GetDeviceInfo()
         print(deviceInfo.Name, '  ', deviceInfo.SerialNumber)
@@ -41,9 +43,24 @@ class Stage(object):
         self.device.EnableDevice()
         time.sleep(0.5)
         self.device.LoadMotorConfiguration(self.serial)
+       
+    def disconnect(self):
+        self.device.StopPolling()
+        self.device.Disconnect(True)
 
     def home(self):
         self.device.Home(60000)
 
-    def move_to(self, position):
-        self.device.MoveTo(Decimal(position), 60000)
+    def move_to(self, position_mm):
+        self.device.MoveTo(Decimal(position_mm), 60000)
+    
+    def position_mm(self):
+        return float(str(self.device.Position))
+
+if __name__ == '__main__':
+    s = Stage(stage_serial_number)
+    s.connect()
+    #s.home()
+    print(s.position_mm())
+    s.move_to(2.0)
+    print(s.position_mm())

@@ -1,3 +1,6 @@
+import sys
+sys.path.append('F:/Anton/pco_git')
+
 import nidaq_pattern
 import pco
 import time
