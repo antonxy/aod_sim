@@ -53,6 +53,9 @@ class SIMSimulatedSystem:
         self.grating_distance_deg = 0.5
         self.grating_angle_deg = 10.0
 
+
+        self.camera = None
+
     def coords(self, N):
         # 1d array along x and y
         sim_x = np.linspace(-self.sample_width/2, self.sample_width/2, N)
@@ -69,9 +72,10 @@ class SIMSimulatedSystem:
 
     def connect(self):
         self.O = self.sample()
+        self.camera = "Some"
 
     def disconnect(self):
-        pass
+        self.camera = None
 
     def configure_camera(self, exposure_time_sec):
         pass
@@ -122,7 +126,9 @@ class SIMSimulatedSystem:
 
         return gaussian_filter(I, self.illumination_res/self._dx*self.sim_oversample/2)
 
-    def project_patterns_and_take_images(self, patterns_deg, pattern_rate_Hz, delay_sec):
+    def project_patterns_and_take_images(self, patterns_deg, pattern_rate_Hz, delay_sec, only_configure=False):
+        if only_configure:
+            return
         O = self.O
         Im = np.zeros((patterns_deg.shape[0], self.N, self.N))
         for i in range(patterns_deg.shape[0]):

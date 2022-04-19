@@ -69,7 +69,7 @@ class SIMHardwareSystem:
             self.camera_exposure = exposure_time_sec
             self.delay_sec = delay_sec
 
-    def project_patterns_and_take_images(self, patterns_deg, pattern_rate_Hz, delay_sec):
+    def project_patterns_and_take_images(self, patterns_deg, pattern_rate_Hz, delay_sec, only_configure=False):
         exposure_time_sec = patterns_deg.shape[1] / pattern_rate_Hz
         num_frames = patterns_deg.shape[0]
 
@@ -98,7 +98,10 @@ class SIMHardwareSystem:
             #patterns_deg_delay = np.concatenate([patterns_deg_delay, np.zeros((1, 1000, 2))], axis=1)
 
         # Start recording. Camera is in trigger mode and will wait for the NI card to start sending the pattern.
-        self.camera.record(number_of_images=num_frames, mode='sequence non blocking')
+        self.camera.record(number_of_images=num_frames, mode='sequence non blocking', memory_mode='camram')
+        if only_configure:
+            self.camera.stop()
+            return
 
         # Play pattern on the NI card.
         # If we are in multi frame mode send out clock instead of start trigger.

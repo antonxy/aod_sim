@@ -115,6 +115,10 @@ class MainWindow(QtWidgets.QMainWindow):
         disconnect_camera_action.triggered.connect(self.disconnect_camera)
         cameraMenu.addAction(disconnect_camera_action)
 
+        set_camera_settings_action = QtWidgets.QAction("Set Camera &Settings", self)
+        set_camera_settings_action.triggered.connect(self.set_camera_settings)
+        cameraMenu.addAction(set_camera_settings_action)
+
         patternMenu = self.menuBar().addMenu("&Pattern")
         update_pattern_action = QtWidgets.QAction("&Update Pattern", self)
         update_pattern_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_P))
@@ -190,6 +194,18 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def disconnect_camera(self):
         self.sim_system.disconnect()
+
+    def set_camera_settings(self):
+        self.create_patterns()
+        connect = self.sim_system.camera is None
+
+        if connect:
+            self.sim_system.connect()
+
+        self.sim_system.project_patterns_and_take_images(self.line_lmi_imaging.pattern_deg, self.line_lmi_imaging.pattern_rate_Hz, self.line_lmi_imaging.params['pattern_delay_sec'], only_configure=True)
+
+        if connect:
+            self.sim_system.disconnect()
 
     def parse_global_params(self):
         return {
