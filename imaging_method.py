@@ -601,8 +601,9 @@ class LineLMIImaging(ImagingMethod):
         self.lmi_enabled_chb.setChecked(True)
         layout.addRow("Do LMI", self.lmi_enabled_chb)
 
-        self.two_grating_chb = QtWidgets.QCheckBox("Two gratings")
-        layout.addRow("Two gratings", self.two_grating_chb)
+        self.grating_nr_cbb = QtWidgets.QComboBox()
+        self.grating_nr_cbb.addItems(["1", "2", "3"])
+        layout.addRow("Nr of gratings", self.grating_nr_cbb)
 
         self.steps_txt = QtWidgets.QLineEdit("5")
         layout.addRow("Steps", self.steps_txt)
@@ -647,7 +648,7 @@ class LineLMIImaging(ImagingMethod):
 
     def parse_parameters(self):
         return {
-            "two_gratings": bool(self.two_grating_chb.isChecked()),
+            "grating_nr": int(self.grating_nr_cbb.currentText()),
             "steps": int(self.steps_txt.text()),
             "multiscan": int(self.multiscan_txt.text()),
             "pattern_repeat": int(self.pattern_repeat_txt.text()),
@@ -655,7 +656,8 @@ class LineLMIImaging(ImagingMethod):
         }
 
     def load_parameters(self, params):
-        self.two_grating_chb.setChecked(bool(params.get("two_gratings", False)))
+        grating_nr = params.get("grating_nr", 2 if params.get("two_gratings", False) else 3)
+        self.grating_nr_cbb.setCurrentIndex(grating_nr - 1)
         self.steps_txt.setText(str(params.get("steps", "10")))
         self.multiscan_txt.setText(str(params.get("multiscan", "10")))
         self.pattern_repeat_txt.setText(str(params.get("pattern_repeat", "1")))
@@ -670,7 +672,7 @@ class LineLMIImaging(ImagingMethod):
         grating_dot_distances = params['grating_dot_distances']
         orientation_deg = params['orientation_deg']
         distance_between_gratings = params["distance_between_gratings"]
-        two_gratings = params['two_gratings']
+        grating_nr = params['grating_nr']
 
         steps = params['steps']
         multiscan = params['multiscan']
@@ -678,10 +680,14 @@ class LineLMIImaging(ImagingMethod):
 
         self.pattern_rate_Hz = params['pattern_rate_Hz']
 
-        if two_gratings:
+        if grating_nr == 2:
             pattern_deg = lmi_pattern.line_lmi_pattern_two_grating(steps, multiscan, grating_dot_distances, distance_between_gratings, orientation_deg=orientation_deg)
-        else:
+        elif grating_nr == 3:
             pattern_deg = lmi_pattern.line_lmi_pattern_deg(steps, multiscan, grating_dot_distances, distance_between_gratings, orientation_rad=np.deg2rad(orientation_deg))
+        elif grating_nr == 1:
+            pattern_deg = lmi_pattern.line_lmi_pattern_one_grating(steps, multiscan, grating_dot_distances, orientation_deg=orientation_deg)
+        else:
+            raise RuntimeError("not implemented")
         pattern_deg = np.tile(pattern_deg, [1, pattern_repeat, 1])
 
         self.exposure_time_sec = pattern_deg.shape[1] / self.pattern_rate_Hz
@@ -700,7 +706,7 @@ class LineLMIImaging(ImagingMethod):
         self.pattern_plot.draw()
 
         self.pattern_deg = pattern_deg
-        self.num_gratings = 2 if two_gratings else 3
+        self.num_gratings = grating_nr
         self.params = params
 
 
@@ -725,7 +731,22 @@ class LineLMIImaging(ImagingMethod):
     def reconstruct(self):
         if not self.lmi_enabled_chb.isChecked():
             return None, None
-        pass
+        # TODO reconstruct multi direction
+        reconstruct = np.max(self.frames, axis=0)
+        #reconstruct = np.max(self.frames, axis=0)
+        sumall = np.sum(self.frames, axis=0)
+
+        self.recon_plot.plot.fig.clear()
+        ax1, ax2 = self.recon_plot.plot.fig.subplots(1, 2, sharex=True, sharey=True)
+        im1 = ax1.imshow(reconstruct)
+        im2 = ax2.imshow(sumall)
+        self.recon_plot.connect_clim(im1, 0)
+        self.recon_plot.connect_clim(im2, 1)
+        self.recon_plot.plot.draw()
+
+        self.reconstruction = reconstruct
+
+        return reconstruct, sumall
 
     def save_images(self, *args, **kwargs):
         if self.lmi_enabled_chb.isChecked():

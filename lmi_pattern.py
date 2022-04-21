@@ -99,3 +99,9 @@ def line_lmi_pattern_two_grating(steps, multiscan, grating_dot_distances, distan
     orientations = np.array([0, 90]) + orientation_deg
 
     return line_lmi_pattern_deg_general(steps, multiscan, grating_dot_distances, center_points, orientations)
+
+def line_lmi_pattern_one_grating(steps, multiscan, grating_dot_distances, orientation_deg):
+    center_points = np.array([[0, 0]])
+    orientations = np.array([orientation_deg])
+
+    return line_lmi_pattern_deg_general(steps, multiscan, grating_dot_distances, center_points, orientations)
