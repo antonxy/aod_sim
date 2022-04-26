@@ -86,14 +86,14 @@ def project_patterns(patterns_degree, rate, reset_when_done = True, loop = False
                             done = True
                         except:
                             pass
-                        if loop_event.is_set():
+                        if not loop_event.is_set():
                             done = True
 
                     # Between pattern delay
                     #time.sleep(0.001)
             first = False
     except KeyboardInterrupt:
-        pass
+        print("Key interrupt")
 
     if reset_when_done:
         dev.reset_device()

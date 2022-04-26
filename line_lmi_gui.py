@@ -351,7 +351,7 @@ class MainWindow(QtWidgets.QMainWindow):
             for txt, val in zip(self.grating_dot_distance_txts, params["grating_dot_distances"]):
                 txt.setText(str(val))
 
-    def save_images(self, show_success=True):
+    def save_images(self, *args, show_success=True):
         folder = self.output_folder_txt.text()
         rec_name = self.recording_name_txt.text()
         if folder != "" and rec_name != "":
