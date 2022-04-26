@@ -96,6 +96,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.mtf_data_txt.setToolTip("Measured MTF in camera plane. TSV with header \"lp/mm\tModulation Factor\"")
         layout.addRow("MTF data", self.mtf_data_txt)
 
+        self.stage_position_txt = QtWidgets.QLineEdit("0.0")
+        layout.addRow("Stage position [mm]", self.stage_position_txt)
+
+        self.stage_position_increment_txt = QtWidgets.QLineEdit("0.0")
+        layout.addRow("Stage position increment [mm]", self.stage_position_increment_txt)
+
+
         optical_group.setLayout(layout)
 
 
@@ -131,6 +138,20 @@ class MainWindow(QtWidgets.QMainWindow):
         disconnect_camera_action = QtWidgets.QAction("&Disconnect Camera", self)
         disconnect_camera_action.triggered.connect(self.disconnect_camera)
         cameraMenu.addAction(disconnect_camera_action)
+
+        stageMenu = self.menuBar().addMenu("&Stage")
+        connect_stage_action = QtWidgets.QAction("&Connect Stage", self)
+        connect_stage_action.triggered.connect(self.connect_stage)
+        stageMenu.addAction(connect_stage_action)
+
+        disconnect_stage_action = QtWidgets.QAction("&Disconnect Stage", self)
+        disconnect_stage_action.triggered.connect(self.disconnect_stage)
+        stageMenu.addAction(disconnect_stage_action)
+
+        home_stage_action = QtWidgets.QAction("&Home Stage", self)
+        home_stage_action.triggered.connect(self.home_stage)
+        stageMenu.addAction(home_stage_action)
+
 
         patternMenu = self.menuBar().addMenu("&Pattern")
         update_pattern_action = QtWidgets.QAction("&Update Pattern", self)
@@ -169,6 +190,11 @@ class MainWindow(QtWidgets.QMainWindow):
         record_slide_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_N))
         record_slide_action.triggered.connect(self.record_slide)
         imageMenu.addAction(record_slide_action)
+
+        capture_zstack_action = QtWidgets.QAction("Capture &Z-Stack", self)
+        capture_zstack_action.triggered.connect(self.capture_zstack)
+        imageMenu.addAction(capture_zstack_action)
+
 
         load_images_action = QtWidgets.QAction("&Open Images", self)
         load_images_action.setShortcut(QtGui.QKeySequence.Open)
@@ -216,6 +242,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setCentralWidget(widget)
 
         self.sim_system = SIMSystem()
+        self.stage = None
 
         self.frames = None
         self.wf_image = None
@@ -234,6 +261,22 @@ class MainWindow(QtWidgets.QMainWindow):
     def disconnect_camera(self):
         self.sim_system.disconnect()
 
+    def connect_stage(self):
+        if self.stage is None:
+            import kinesis
+            self.stage = kinesis.Stage(kinesis.stage_serial_number)
+        self.stage.connect()
+
+    def disconnect_stage(self):
+        self.stage.disconnect()
+
+    def home_stage(self):
+        self.stage.home()
+
+    def set_stage_position(self):
+        self.stage.move_to(float(self.stage_position_txt.text()))
+
+
     def parse_global_params(self):
         return {
             "grating_distance_x": float(self.grating_distance_x_txt.text()),
@@ -251,6 +294,8 @@ class MainWindow(QtWidgets.QMainWindow):
             "recording_notes": self.image_notes_txt.text(),
             "software_version": get_git_revision_short_hash(),
             "date_time": datetime.now().astimezone().isoformat(),
+            "stage_position": float(self.stage_position_txt.text()),
+            "stage_position_increment": float(self.stage_position_increment_txt.text()),
         }
 
     # This is for parameters which should not be saved as part of image metadata
@@ -298,6 +343,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.em_wavelength_txt.setText(str(global_params.get("em_wavelength", "0.680")))
         self.mtf_data_txt.setText(global_params.get("mtf_data", ""))
         self.image_notes_txt.setText(global_params.get("recording_notes", ""))
+        self.stage_position_txt.setText(str(global_params.get("stage_position", 0.0)))
+        self.stage_position_increment_txt.setText(str(global_params.get("stage_position_increment", 0.0)))
 
         self.sim_imaging.load_parameters(params.get("sim", {}))
         self.lmi_imaging.load_parameters(params.get("lmi", {}))
@@ -347,7 +394,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.take_images()
         self.reconstruct_image()
 
-    def save_images(self):
+    def save_images(self, *args, show_success=True):
         folder = self.output_folder_txt.text()
         rec_name = self.recording_name_txt.text()
         if folder != "" and rec_name != "":
@@ -358,7 +405,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.sim_imaging.save_images(rec_folder)
                 self.lmi_imaging.save_images(rec_folder)
                 self.save_settings_action(file = os.path.join(rec_folder, "settings.json"))
-                QtWidgets.QMessageBox.information(self, "Success", "Saved successfully")
+                if show_success:
+                    QtWidgets.QMessageBox.information(self, "Success", "Saved successfully")
                 self.increment_filename()
             else:
                 QtWidgets.QMessageBox.critical(self, "Error", "Directory already exists, not saving")
@@ -476,6 +524,28 @@ class MainWindow(QtWidgets.QMainWindow):
         msgBox.exec()
         run_event.clear()
         thread.join()
+
+    def capture_zstack(self):
+        run_event = threading.Event()
+        run_event.set()
+
+        #msgBox = QtWidgets.QMessageBox(parent=self)
+        #msgBox.setText(f"Capturing z-stack. Close dialog to stop")
+        #msgBox.show()
+
+        stage_pos = float(self.stage_position_txt.text())
+        increment = float(self.stage_position_increment_txt.text())
+        while True:
+            print(f"Z-Stack pos: {stage_pos}")
+            self.stage.move_to(stage_pos)
+            #QtCore.QCoreApplication.processEvents()
+            self.take_images()
+            #QtCore.QCoreApplication.processEvents()
+            self.save_images(show_success=False)
+            #QtCore.QCoreApplication.processEvents()
+            stage_pos += increment
+            #print(msgBox.result())
+
 
 
 if __name__ == "__main__":
