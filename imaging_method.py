@@ -720,6 +720,8 @@ class LineLMIImaging(ImagingMethod):
     def plot_images(self):
         self.image_plot.plot.fig.clear()
         axs = self.image_plot.plot.fig.subplots(self.num_gratings, 3, sharex=True, sharey=True)
+        if self.num_gratings == 1:
+            axs = axs[np.newaxis, :]
         ims = []
         frames_per_grating = int(len(self.frames) / 3)
         for i in range(self.num_gratings):
