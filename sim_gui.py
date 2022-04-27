@@ -96,6 +96,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.mtf_data_txt.setToolTip("Measured MTF in camera plane. TSV with header \"lp/mm\tModulation Factor\"")
         layout.addRow("MTF data", self.mtf_data_txt)
 
+        self.capture_repeats_txt = QtWidgets.QLineEdit("1000")
+        layout.addRow("Capture repeats", self.capture_repeats_txt)
+
         self.stage_position_txt = QtWidgets.QLineEdit("0.0")
         layout.addRow("Stage position [mm]", self.stage_position_txt)
 
@@ -139,6 +142,10 @@ class MainWindow(QtWidgets.QMainWindow):
         disconnect_camera_action.triggered.connect(self.disconnect_camera)
         cameraMenu.addAction(disconnect_camera_action)
 
+        set_camera_settings_action = QtWidgets.QAction("Set Camera &Settings", self)
+        set_camera_settings_action.triggered.connect(self.set_camera_settings)
+        cameraMenu.addAction(set_camera_settings_action)
+
         stageMenu = self.menuBar().addMenu("&Stage")
         connect_stage_action = QtWidgets.QAction("&Connect Stage", self)
         connect_stage_action.triggered.connect(self.connect_stage)
@@ -176,6 +183,10 @@ class MainWindow(QtWidgets.QMainWindow):
         project_pattern_loop_action = QtWidgets.QAction("Project &Pattern", self)
         project_pattern_loop_action.triggered.connect(self.project_pattern_loop)
         patternMenu.addAction(project_pattern_loop_action)
+
+        project_pattern_loopv_action = QtWidgets.QAction("Project Pattern &Video", self)
+        project_pattern_loopv_action.triggered.connect(self.project_pattern_loopv)
+        patternMenu.addAction(project_pattern_loopv_action)
 
         measure_orientation_action = QtWidgets.QAction("&Measure Orientation", self)
         measure_orientation_action.triggered.connect(self.measure_orientation)
@@ -266,6 +277,18 @@ class MainWindow(QtWidgets.QMainWindow):
     def disconnect_camera(self):
         self.sim_system.disconnect()
 
+    def set_camera_settings(self):
+        self.create_patterns()
+        connect = self.sim_system.camera is None
+
+        if connect:
+            self.sim_system.connect()
+
+        self.sim_system.project_patterns_and_take_images(self.sim_imaging.pattern_deg, self.sim_imaging.pattern_rate_Hz, self.sim_imaging.params['pattern_delay_sec'], only_configure=True)
+
+        if connect:
+            self.sim_system.disconnect()
+
     def connect_stage(self):
         if self.stage is None:
             import kinesis
@@ -308,6 +331,7 @@ class MainWindow(QtWidgets.QMainWindow):
         return {
             "output_folder": self.output_folder_txt.text(),
             "recording_name": self.recording_name_txt.text(),
+            "capture_repeats": int(self.capture_repeats_txt.text()),
         }
 
     def save_settings_action(self, *args, file = None):
@@ -348,6 +372,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.em_wavelength_txt.setText(str(global_params.get("em_wavelength", "0.680")))
         self.mtf_data_txt.setText(global_params.get("mtf_data", ""))
         self.image_notes_txt.setText(global_params.get("recording_notes", ""))
+        self.capture_repeats_txt.setText(str(global_params.get("capture_repeats", "1000")))
         self.stage_position_txt.setText(str(global_params.get("stage_position", 0.0)))
         self.stage_position_increment_txt.setText(str(global_params.get("stage_position_increment", 0.0)))
 
@@ -502,6 +527,21 @@ class MainWindow(QtWidgets.QMainWindow):
         thread.start()
         msgBox = QtWidgets.QMessageBox()
         msgBox.setText("Projecting pattern. Close dialog to stop")
+        msgBox.exec()
+        run_event.clear()
+        thread.join()
+
+    def project_pattern_loopv(self):
+        capture_repeats = int(self.capture_repeats_txt.text())
+        self.create_patterns()
+        run_event = threading.Event()
+        run_event.set()
+        pattern = self.sim_imaging.pattern_deg.reshape(-1, 2)
+        pattern = np.tile(pattern, [capture_repeats, 1])
+        thread = threading.Thread(target = self.sim_system.project_patterns_video, args = (pattern, self.sim_imaging.pattern_rate_Hz, run_event))
+        thread.start()
+        msgBox = QtWidgets.QMessageBox()
+        msgBox.setText(f"Projecting pattern {capture_repeats} times. Close dialog to stop")
         msgBox.exec()
         run_event.clear()
         thread.join()
