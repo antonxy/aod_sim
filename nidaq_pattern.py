@@ -17,13 +17,17 @@ def angle_deg_to_frequency_MHz(angle_deg):
     return freq_MHz
 
 
-def frequency_MHz_to_bin(x, y):
+def frequency_MHz_to_bin(x, y, single_aod = False):
     x_int = np.round(x / 500 * (2 ** 15 - 1)).astype(np.uint32)
     y_int = np.round(y / 500 * (2 ** 15 - 1)).astype(np.uint32)
+    if single_aod:
+        x_int = np.round(x * 0).astype(np.uint32)
 
     assert((x_int < 2**15).all())
     assert((y_int < 2**15).all())
 
+    if single_aod:
+        return (((0 << 15 | x_int) << 16) | (1 << 15 | y_int)).astype(np.uint32)
     return (((1 << 15 | x_int) << 16) | (1 << 15 | y_int)).astype(np.uint32)
 
 
@@ -40,7 +44,7 @@ def save_pattern_as_csv(pattern, filename):
             print(';'.join(binary), file=f)
 
 
-def project_patterns(patterns_degree, rate, reset_when_done = True, loop = False, loop_event = None, export_clock = False):
+def project_patterns(patterns_degree, rate, reset_when_done = True, loop = False, loop_event = None, export_clock = False, single_aod = False):
     import nidaqmx
     # patterns_degree dimensions: [pattern, sample in pattern, axis (x,y)]
     if len(patterns_degree.shape) == 2:
@@ -53,7 +57,7 @@ def project_patterns(patterns_degree, rate, reset_when_done = True, loop = False
 
     scan_angle_x = angle_deg_to_frequency_MHz(patterns_degree[:, :, 0])
     scan_angle_y = angle_deg_to_frequency_MHz(patterns_degree[:, :, 1])
-    scan = frequency_MHz_to_bin(scan_angle_x, scan_angle_y)
+    scan = frequency_MHz_to_bin(scan_angle_x, scan_angle_y, single_aod)
 
     print(f"Projecting {num_patterns} patterns with {num_samples} samples each")
 

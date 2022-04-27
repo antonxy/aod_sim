@@ -72,7 +72,7 @@ class SIMHardwareSystem:
             self.camera_exposure = exposure_time_sec
             self.delay_sec = delay_sec
 
-    def project_patterns_and_take_images(self, patterns_deg, pattern_rate_Hz, delay_sec, only_configure=False):
+    def project_patterns_and_take_images(self, patterns_deg, pattern_rate_Hz, delay_sec, only_configure=False, single_aod = False):
         exposure_time_sec = patterns_deg.shape[1] / pattern_rate_Hz
         num_frames = patterns_deg.shape[0]
 
@@ -109,7 +109,7 @@ class SIMHardwareSystem:
         # Play pattern on the NI card.
         # If we are in multi frame mode send out clock instead of start trigger.
         # This way the camera can record multiple frames, but if the timing is not totally correct AOD and camera might drift apart.
-        nidaq_pattern.project_patterns(patterns_deg_delay, pattern_rate_Hz, export_clock = self.multi_frame_acquire)
+        nidaq_pattern.project_patterns(patterns_deg_delay, pattern_rate_Hz, export_clock = self.multi_frame_acquire, single_aod = single_aod)
 
         # Wait for camera to finish
         t_start = time.time()
@@ -131,9 +131,9 @@ class SIMHardwareSystem:
     def take_widefield_image(self):
         return None
 
-    def project_patterns_looping(self, patterns_deg, pattern_rate_Hz, run_event):
-        nidaq_pattern.project_patterns(patterns_deg, pattern_rate_Hz, loop=True, loop_event = run_event)
+    def project_patterns_looping(self, patterns_deg, pattern_rate_Hz, run_event, single_aod = False):
+        nidaq_pattern.project_patterns(patterns_deg, pattern_rate_Hz, loop=True, loop_event = run_event, single_aod = single_aod)
 
 
-    def project_patterns_video(self, patterns_deg, pattern_rate_Hz, run_event):
-        nidaq_pattern.project_patterns(patterns_deg, pattern_rate_Hz, loop=False, loop_event = run_event, export_clock = True)
+    def project_patterns_video(self, patterns_deg, pattern_rate_Hz, run_event, single_aod = False):
+        nidaq_pattern.project_patterns(patterns_deg, pattern_rate_Hz, loop=False, loop_event = run_event, export_clock = True, single_aod = single_aod)
