@@ -81,6 +81,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.distance_between_gratings_txt = QtWidgets.QLineEdit("1")
         layout.addRow("Distance between gratings [deg]", self.distance_between_gratings_txt)
 
+        self.single_aod_chb = QtWidgets.QCheckBox("Single AOD")
+        layout.addRow("Single AOD", self.single_aod_chb)
+
         self.capture_repeats_txt = QtWidgets.QLineEdit("1000")
         layout.addRow("Capture repeats", self.capture_repeats_txt)
         
@@ -239,7 +242,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if connect:
             self.sim_system.connect()
 
-        self.sim_system.project_patterns_and_take_images(self.line_lmi_imaging.pattern_deg, self.line_lmi_imaging.pattern_rate_Hz, self.line_lmi_imaging.params['pattern_delay_sec'], only_configure=True)
+        self.sim_system.project_patterns_and_take_images(self.line_lmi_imaging.pattern_deg, self.line_lmi_imaging.pattern_rate_Hz, self.line_lmi_imaging.params['pattern_delay_sec'], only_configure=True, single_aod = self.line_lmi_imaging.params['single_aod'])
 
         if connect:
             self.sim_system.disconnect()
@@ -270,6 +273,7 @@ class MainWindow(QtWidgets.QMainWindow):
             "date_time": datetime.now().astimezone().isoformat(),
             "stage_position": float(self.stage_position_txt.text()),
             "stage_position_increment": float(self.stage_position_increment_txt.text()),
+            "single_aod": self.single_aod_chb.isChecked(),
         }
 
     # This is for parameters which should not be saved as part of image metadata
@@ -308,6 +312,7 @@ class MainWindow(QtWidgets.QMainWindow):
             txt.setText(str(val))
         self.orientation_deg_txt.setText(str(global_params.get("orientation_deg", "0")))
         self.distance_between_gratings_txt.setText(str(global_params.get("distance_between_gratings", "1")))
+        self.single_aod_chb.setChecked(global_params.get("single_aod", False))
         self.capture_repeats_txt.setText(str(global_params.get("capture_repeats", "1000")))
         self.stage_position_txt.setText(str(global_params.get("stage_position", 0.0)))
         self.stage_position_increment_txt.setText(str(global_params.get("stage_position_increment", 0.0)))
@@ -374,7 +379,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.create_patterns()
         run_event = threading.Event()
         run_event.set()
-        thread = threading.Thread(target = self.sim_system.project_patterns_looping, args = (self.line_lmi_imaging.pattern_deg, self.line_lmi_imaging.pattern_rate_Hz, run_event))
+        thread = threading.Thread(target = self.sim_system.project_patterns_looping, args = (self.line_lmi_imaging.pattern_deg, self.line_lmi_imaging.pattern_rate_Hz, run_event, self.single_aod_chb.isChecked()))
         thread.start()
         msgBox = QtWidgets.QMessageBox()
         msgBox.setText("Projecting pattern. Close dialog to stop")
@@ -389,7 +394,7 @@ class MainWindow(QtWidgets.QMainWindow):
         run_event.set()
         pattern = self.line_lmi_imaging.pattern_deg.reshape(-1, 2)
         pattern = np.tile(pattern, [capture_repeats, 1])
-        thread = threading.Thread(target = self.sim_system.project_patterns_video, args = (pattern, self.line_lmi_imaging.pattern_rate_Hz, run_event))
+        thread = threading.Thread(target = self.sim_system.project_patterns_video, args = (pattern, self.line_lmi_imaging.pattern_rate_Hz, run_event, self.single_aod_chb.isChecked()))
         thread.start()
         msgBox = QtWidgets.QMessageBox()
         msgBox.setText(f"Projecting pattern {capture_repeats} times. Close dialog to stop")

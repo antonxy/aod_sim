@@ -713,7 +713,7 @@ class LineLMIImaging(ImagingMethod):
     def take_images(self, system):
         if not self.lmi_enabled_chb.isChecked():
             return
-        self.frames = system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz, self.params['pattern_delay_sec'])
+        self.frames = system.project_patterns_and_take_images(self.pattern_deg, self.pattern_rate_Hz, self.params['pattern_delay_sec'], single_aod = self.params['single_aod'])
         self.reconstruction = None
         self.plot_images()
 
