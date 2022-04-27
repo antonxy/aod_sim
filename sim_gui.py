@@ -151,6 +151,11 @@ class MainWindow(QtWidgets.QMainWindow):
         home_stage_action = QtWidgets.QAction("&Home Stage", self)
         home_stage_action.triggered.connect(self.home_stage)
         stageMenu.addAction(home_stage_action)
+        
+        set_stage_position_action = QtWidgets.QAction("&Set Stage Position", self)
+        set_stage_position_action.triggered.connect(self.set_stage_position)
+        set_stage_position_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_T))
+        stageMenu.addAction(set_stage_position_action)
 
 
         patternMenu = self.menuBar().addMenu("&Pattern")
@@ -394,7 +399,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.take_images()
         self.reconstruct_image()
 
-    def save_images(self, *args, show_success=True):
+    def save_images(self, *args, show_success=True, save_raw=True):
         folder = self.output_folder_txt.text()
         rec_name = self.recording_name_txt.text()
         if folder != "" and rec_name != "":
@@ -403,7 +408,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if not os.path.exists(rec_folder):
                 os.makedirs(rec_folder)
                 self.sim_imaging.save_images(rec_folder)
-                self.lmi_imaging.save_images(rec_folder)
+                self.lmi_imaging.save_images(rec_folder, save_raw = save_raw)
                 self.save_settings_action(file = os.path.join(rec_folder, "settings.json"))
                 if show_success:
                     QtWidgets.QMessageBox.information(self, "Success", "Saved successfully")
@@ -540,8 +545,9 @@ class MainWindow(QtWidgets.QMainWindow):
             self.stage.move_to(stage_pos)
             #QtCore.QCoreApplication.processEvents()
             self.take_images()
+            self.reconstruct_image_nocal()
             #QtCore.QCoreApplication.processEvents()
-            self.save_images(show_success=False)
+            self.save_images(show_success=False, save_raw = False)
             #QtCore.QCoreApplication.processEvents()
             stage_pos += increment
             #print(msgBox.result())
