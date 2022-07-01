@@ -29,7 +29,21 @@ After changing parameters use "Update Patterns" to update the plots. (Better alw
 
 When everything is set record a set of images (`Ctrl+Enter`). You have to save them separately (`Ctrl+S`). There will be a confirmation dialog that they have been saved.
 
+You can run "Reconstruct Images". Thats most interesting for SIM, for LMI it's just MIP. If you run the reconstruction before saving, the reconstructed image will also be saved.
+
 There are Keyboard shortcuts defined for most things, check the menus.
+
+## Quickly image many samples
+
+For quickly imaging a lot of slides I put in the "Take Slide Image" function. It does the following steps
+
+* Enable the AOD at zero position. This helps align the slide. When you have placed the slide press `Enter`.
+* Record an image sequence
+* Run the reconstruction
+
+You can then check if the image looks good and save it if you like it. Otherwise just run it once more.
+
+You can also run all these steps manually, but it saves a few keypresses, which can be useful if you repeat it a lot.
 
 ## Recording a video
 
