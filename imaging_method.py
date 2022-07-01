@@ -158,6 +158,7 @@ class SIMImaging(ImagingMethod):
 
     def parse_parameters(self):
         return {
+            "enabled": self.sim_enabled_chb.isChecked(),
             "desired_distance": float(self.desired_distance_txt.text()),
             "pattern_rate_Hz": float(self.pattern_hz_txt.text()),
 
@@ -172,6 +173,7 @@ class SIMImaging(ImagingMethod):
         }
 
     def load_parameters(self, params):
+        self.sim_enabled_chb.setChecked(bool(params.get("enabled", "True")))
         self.desired_distance_txt.setText(str(params.get("desired_distance", "0.013")))
         self.pattern_hz_txt.setText(str(params.get("pattern_rate_Hz", "10000")))
 
@@ -492,6 +494,7 @@ class LMIImaging(ImagingMethod):
 
     def parse_parameters(self):
         return {
+            "enabled": self.lmi_enabled_chb.isChecked(),
             "steps_x": int(self.steps_x_txt.text()),
             "steps_y": int(self.steps_y_txt.text()),
             "multiscan_x": int(self.multiscan_x_txt.text()),
@@ -500,6 +503,7 @@ class LMIImaging(ImagingMethod):
         }
 
     def load_parameters(self, params):
+        self.lmi_enabled_chb.setChecked(bool(params.get("enabled", "True")))
         self.steps_x_txt.setText(str(params.get("steps_x", "10")))
         self.steps_y_txt.setText(str(params.get("steps_y", "10")))
         self.multiscan_x_txt.setText(str(params.get("multiscan_x", "10")))
