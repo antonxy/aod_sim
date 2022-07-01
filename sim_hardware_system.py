@@ -1,4 +1,6 @@
 import sys
+
+# Since I made some changes in the pco python sdk load the customized one
 sys.path.append('F:/Anton/pco_git')
 
 import nidaq_pattern
@@ -90,18 +92,12 @@ class SIMHardwareSystem:
         if self.multi_frame_acquire:
             # Project all patterns without trigger inbetween
             patterns_deg_delay = patterns_deg_delay.reshape(1, -1, 2)
-            
-            # Somehow the camera needs to get some extra triggers after the desired number of frames
-            # Otherwise only e.g. 4 of 9 frames are in the recorder even though oscilloscope shows that
-            # 9 frames have been recorded and the 9 frames can also be seen in camware.
-            # Very weird..., but thats what this is for
-            # ! But it still doesn't work. Now 9 frames are recorded but they are not the first 9 frames,
-            # but some random(?) 9 frames of more of them. Is the recorder dropping frames when
-            # recording too fast?
-            #patterns_deg_delay = np.concatenate([patterns_deg_delay, np.zeros((1, 1000, 2))], axis=1)
 
         # Start recording. Camera is in trigger mode and will wait for the NI card to start sending the pattern.
         self.camera.record(number_of_images=num_frames, mode='sequence non blocking', memory_mode='camram')
+
+        # This is for "set camera settings"
+        # Starting and aborting a recording is the easiest way to make sure all camera settings are set
         if only_configure:
             self.camera.stop()
             return
