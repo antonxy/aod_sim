@@ -46,6 +46,9 @@ def projection_hex_pattern_deg(step_size_deg, steps_x, steps_y, orientation_rad=
 
     # Apply aspect ratio
     positions[:, 1] = positions[:, 1] * y_tweak
+    
+    # Copy first position (extra step exposure trick)
+    positions = np.concatenate([positions, (positions[0, :])[np.newaxis, :]], axis=0)
 
     num_steps = positions.shape[0]
 

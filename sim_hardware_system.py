@@ -86,8 +86,11 @@ class SIMHardwareSystem:
         camera_delay_sec = pattern_delay_sec - delay_sec
         print(f"Camera delay {camera_delay_sec} sec")
 
-        quater_sample = 0.25 / pattern_rate_Hz
-        self.configure_camera(exposure_time_sec - quater_sample, delay_sec = camera_delay_sec, num_frames = num_frames)
+        #quater_sample = 0.000050#50us #0.25 / pattern_rate_Hz
+        full_sample = 1 / pattern_rate_Hz # subtract full sample (first multiscan reexpose
+        half_sample = full_sample / 2
+        print(f"Camera exposure {exposure_time_sec} - fullsample {full_sample} = {exposure_time_sec - full_sample}, delay = half_sample {half_sample}")
+        self.configure_camera(exposure_time_sec - full_sample, delay_sec = 0.0, num_frames = num_frames)
 
         if self.multi_frame_acquire:
             # Project all patterns without trigger inbetween

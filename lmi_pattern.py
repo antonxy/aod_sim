@@ -12,6 +12,9 @@ def lmi_pattern_deg(steps_x, steps_y, multiscan_x, multiscan_y, distance_x, dist
 
     # Center positions around 0
     positions = positions - np.mean(positions, axis=0)
+    
+    # Copy first position (extra step exposure trick)
+    positions = np.concatenate([positions, (positions[0, :])[np.newaxis, :]], axis=0)
 
     # Shift
     shift_positions_x = np.linspace(0, distance_x / multiscan_x, steps_x, endpoint=False)
@@ -62,7 +65,10 @@ def line_lmi_pattern_deg_general(steps, multiscan, grating_dot_distances, center
     patterns = []
     for grating_center_pos, grating_orientation_deg, grating_dot_distance in zip(center_points, orientations_deg, grating_dot_distances):
         # multiscan
-        positions = np.linspace(0, grating_dot_distance, multiscan, endpoint=False)
+        if multiscan > 1:
+            positions = np.linspace(0, grating_dot_distance, multiscan + 1, endpoint=True)
+        else:
+            positions = np.linspace(0, grating_dot_distance, multiscan, endpoint=False)
 
         # Shift
         shift_positions = np.linspace(0, grating_dot_distance / multiscan, steps, endpoint=False)
