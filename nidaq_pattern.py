@@ -18,16 +18,16 @@ def angle_deg_to_frequency_MHz(angle_deg):
 
 
 def frequency_MHz_to_bin(x, y, single_aod = False):
-    x_int = np.round(x / 500 * (2 ** 15 - 1)).astype(np.uint32)
+    if not single_aod:
+        x_int = np.round(x / 500 * (2 ** 15 - 1)).astype(np.uint32)
     y_int = np.round(y / 500 * (2 ** 15 - 1)).astype(np.uint32)
-    if single_aod:
-        x_int = np.round(x * 0).astype(np.uint32)
 
-    assert((x_int < 2**15).all())
+    if not single_aod:
+        assert((x_int < 2**15).all())
     assert((y_int < 2**15).all())
 
     if single_aod:
-        return (((0 << 15 | x_int) << 16) | (1 << 15 | y_int)).astype(np.uint32)
+        return (1 << 15 | y_int).astype(np.uint32)
     return (((1 << 15 | x_int) << 16) | (1 << 15 | y_int)).astype(np.uint32)
 
 
