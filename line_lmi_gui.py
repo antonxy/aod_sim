@@ -159,6 +159,11 @@ class MainWindow(QtWidgets.QMainWindow):
         project_pattern_loop_action.triggered.connect(self.project_pattern_loop)
         patternMenu.addAction(project_pattern_loop_action)
         
+        project_zero_pattern_loop_action = QtWidgets.QAction("Project &Zero Pattern", self)
+        project_zero_pattern_loop_action.setShortcut(QtGui.QKeySequence(QtGui.Qt.CTRL | QtGui.Qt.Key_L))
+        project_zero_pattern_loop_action.triggered.connect(self.project_zero_pattern_loop)
+        patternMenu.addAction(project_zero_pattern_loop_action)
+        
         project_pattern_loopv_action = QtWidgets.QAction("Project Pattern &Video", self)
         project_pattern_loopv_action.triggered.connect(self.project_pattern_loopv)
         patternMenu.addAction(project_pattern_loopv_action)
@@ -374,6 +379,18 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def reconstruct_image(self):
         pass
+        
+    def project_zero_pattern_loop(self):
+        pattern_deg = np.zeros((1, 500, 2))
+        run_event = threading.Event()
+        run_event.set()
+        thread = threading.Thread(target = self.sim_system.project_patterns_looping, args = (pattern_deg, 500, run_event, self.single_aod_chb.isChecked()))
+        thread.start()
+        msgBox = QtWidgets.QMessageBox()
+        msgBox.setText("Projecting zero pattern. Close dialog to stop")
+        msgBox.exec()
+        run_event.clear()
+        thread.join()
 
     def project_pattern_loop(self):
         self.create_patterns()
