@@ -68,8 +68,14 @@ class MeasureLineGratingsDialog(QtWidgets.QDialog):
         grating_dot_distances = params['grating_dot_distances']
         orientation_deg = self.global_params['orientation_deg']
         distance_between_gratings = self.global_params["distance_between_gratings"]
-
-        pattern_deg = lmi_pattern.line_lmi_pattern_deg(2, 1, [x * 2 for x in grating_dot_distances], distance_between_gratings, orientation_rad=np.deg2rad(orientation_deg))
+        grating_nr = 1
+        
+        if grating_nr == 2:
+            pattern_deg = lmi_pattern.line_lmi_pattern_two_grating(2, 1, [x * 2 for x in grating_dot_distances], distance_between_gratings, orientation_deg=orientation_deg)
+        elif grating_nr == 3:
+            pattern_deg = lmi_pattern.line_lmi_pattern_deg(2, 1, [x * 2 for x in grating_dot_distances], distance_between_gratings, orientation_rad=np.deg2rad(orientation_deg))
+        elif grating_nr == 1:
+            pattern_deg = lmi_pattern.line_lmi_pattern_one_grating(2, 1, [x * 2 for x in grating_dot_distances], orientation_deg=orientation_deg)
 
         pattern_deg = np.reshape(pattern_deg, (1, -1, 2))  # All steps in single frame
 
