@@ -73,6 +73,9 @@ class SIMImaging(ImagingMethod):
 
         self.desired_distance_txt = QtWidgets.QLineEdit("0.0345")
         layout.addRow("Desired dot distance [deg]", self.desired_distance_txt)
+        
+        self.second_order_chb = QtWidgets.QCheckBox("Second order")
+        layout.addRow("Second order", self.second_order_chb)
 
         self.steps_x_lbl = QtWidgets.QLabel()
         layout.addRow("Steps X", self.steps_x_lbl)
@@ -161,6 +164,7 @@ class SIMImaging(ImagingMethod):
             "enabled": self.sim_enabled_chb.isChecked(),
             "desired_distance": float(self.desired_distance_txt.text()),
             "pattern_rate_Hz": float(self.pattern_hz_txt.text()),
+            "second_order": self.second_order_chb.isChecked(),
 
             "reconstruction_size": int(self.reconstruction_size_txt.text()),
             "reconstruction_offset_x": int(self.reconstruction_offset_x.text()),
@@ -176,6 +180,7 @@ class SIMImaging(ImagingMethod):
         self.sim_enabled_chb.setChecked(bool(params.get("enabled", "True")))
         self.desired_distance_txt.setText(str(params.get("desired_distance", "0.013")))
         self.pattern_hz_txt.setText(str(params.get("pattern_rate_Hz", "10000")))
+        self.second_order_chb.setChecked(params.get("second_order", False))
 
         self.reconstruction_size_txt.setText(str(params.get("reconstruction_size", "1000")))
         self.reconstruction_offset_x.setText(str(params.get("reconstruction_offset_x", "0")))
@@ -210,15 +215,19 @@ class SIMImaging(ImagingMethod):
 
         orientation_deg = params['orientation_deg']
         self.pattern_rate_Hz = params['pattern_rate_Hz']
+        
+        second_order = params['second_order']
 
-        pattern_deg = hex_grid.projection_hex_pattern_deg(distance_x, steps_x, steps_y, orientation_rad = np.deg2rad(orientation_deg), aspect_ratio=aspect)
+        pattern_deg = hex_grid.projection_hex_pattern_deg(distance_x, steps_x, steps_y, orientation_rad = np.deg2rad(orientation_deg), aspect_ratio=aspect, second_order=second_order)
+
+        num_shifts = 19 if second_order else 7
 
         self.exposure_time_sec = pattern_deg.shape[1] / self.pattern_rate_Hz
-        self.exposure_lbl.setText(f"{self.exposure_time_sec * 1e3:.1f} ms * 7 = {self.exposure_time_sec * 1e3 * 7:.1f} ms")
+        self.exposure_lbl.setText(f"{self.exposure_time_sec * 1e3:.1f} ms * {num_shifts} = {self.exposure_time_sec * 1e3 * num_shifts:.1f} ms")
 
         self.pattern_plot.fig.clear()
         ax1, ax2 = self.pattern_plot.fig.subplots(1, 2, sharex=True, sharey=True)
-        for i in range(7):
+        for i in range(num_shifts):
             ax1.scatter(pattern_deg[i, :, 0], pattern_deg[i, :, 1])
         ax2.scatter(pattern_deg[0, :, 0], pattern_deg[0, :, 1])
         ax1.set_aspect(1)

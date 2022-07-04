@@ -36,7 +36,7 @@ def hex_grid_positions(x_dist, tiles_x, tiles_y):
     return P
 
 
-def projection_hex_pattern_deg(step_size_deg, steps_x, steps_y, orientation_rad=0.0, aspect_ratio=1.0):
+def projection_hex_pattern_deg(step_size_deg, steps_x, steps_y, orientation_rad=0.0, aspect_ratio=1.0, second_order=False):
     y_tweak = aspect_ratio
 
     positions = hex_grid_positions(step_size_deg, steps_x, steps_y)
@@ -52,11 +52,13 @@ def projection_hex_pattern_deg(step_size_deg, steps_x, steps_y, orientation_rad=
     print(f"{num_steps} scan positions in hex grid")
 
     # Shift by 1/7 period
-    shift_pos = hex_grid_positions(step_size_deg, 1, 2)
-    shift_pos = shift_pos[3, :]
+    shift_pos = hex_grid_positions(step_size_deg, 1, 8)
+    shift_pos = shift_pos[5, :] if second_order else shift_pos[3, :]
     shift_pos[1] *= y_tweak
 
-    shifts = shift_pos[np.newaxis, :] * (np.arange(7) / 7)[:, np.newaxis]
+    num_shifts = 19 if second_order else 7
+    
+    shifts = shift_pos[np.newaxis, :] * (np.arange(num_shifts) / num_shifts)[:, np.newaxis]
 
     positions_shifted = positions[np.newaxis, :, :] + shifts[:, np.newaxis, :]
 
@@ -65,7 +67,7 @@ def projection_hex_pattern_deg(step_size_deg, steps_x, steps_y, orientation_rad=
     R = np.array(((c, -s), (s, c)))
     positions_shifted = np.dot(positions_shifted, R.T)
 
-    num_steps = num_steps * 7;
+    num_steps = num_steps * num_shifts;
 
     print(f"hex grid shifted 7 times, {num_steps} scan positions total");
 
