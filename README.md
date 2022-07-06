@@ -19,7 +19,7 @@ Generally while the application is doing something and hangs, don't click on too
 
 Define what you want to do: SIM or LMI (Checkboxes), distance between scanning dots, distance in the grating, ...
 
-Set the folder and recording name where you want to save your recording. Each recording is saved in its own subfolder defined by the recording name. The recording notes are saved inside the metadata file with the recording.
+Set the folder and recording name where you want to save your recording. The path is relative to the location of the software, so `../recordings` will be in the folder recordings next to the aod_sim folder. Each recording is saved in its own subfolder defined by the recording name. The recording notes are saved inside the metadata file with the recording.
 
 If the recording name ends in a number, this number will automatically be incremented after saving. This makes it easy to quickly record a set of slides for example.
 
